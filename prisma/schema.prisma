@@ -1,0 +1,178 @@
+// Kidoclassic store schema.
+//
+// The one decision that matters here: price and stock live on ProductVariant,
+// never on Product. A product is a name and some photos. A variant is the thing
+// a customer actually buys and the thing you actually count in a stockroom.
+// Everything downstream (cart, orders, the admin grid) hangs off that.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  imageUrl  String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id String @id @default(cuid())
+
+  // Cards show the brand above the product name: "Roadster" then
+  // "Printed Cotton T-Shirt". Optional, because not everything is branded.
+  brand       String?
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  // A JSON array of URLs, ordered, first one is the card image. MySQL has no
+  // scalar list type, so read it through imageList() rather than trusting it.
+  images      Json?
+  status      Status   @default(DRAFT)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  variants ProductVariant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum Status {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  size  String
+  color String?
+
+  // Kobo, not Naira. Storing money as an integer of the smallest unit avoids
+  // every floating point rounding bug you would otherwise hit at checkout.
+  priceKobo Int
+
+  // The struck-through "was" price on the card. Never charge from this field,
+  // and leave it null when the item is not discounted.
+  compareAtKobo Int?
+
+  stock     Int    @default(0)
+  sku       String? @unique
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  // One row per size/color combination per product.
+  @@unique([productId, size, color])
+  @@index([productId])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String?
+  lastName     String?
+  role         Role     @default(CUSTOMER)
+  orders       Order[]
+  carts        Cart[]
+  createdAt    DateTime @default(now())
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?    @unique // guests, cookie-backed
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([userId])
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int            @default(1)
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id     String      @id @default(cuid())
+  userId String?
+  user   User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  email  String
+  phone  String?
+  status OrderStatus @default(PENDING)
+
+  // Recomputed server-side from variant prices at checkout. Never trust a total
+  // sent from the browser.
+  totalKobo Int
+
+  // Shipping address kept as plain fields rather than a relation: an order is a
+  // historical record and must not change when a customer later edits her
+  // saved address.
+  addressLine String?
+  city        String?
+  state       String?
+
+  // Set from the ALAT Pay webhook, not from the redirect back to the site.
+  paymentRef String?   @unique
+  paidAt     DateTime?
+
+  items     OrderItem[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+model OrderItem {
+  id        String         @id @default(cuid())
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  quantity Int
+
+  // Frozen at purchase. If you raise a price next month, last month's receipt
+  // must still say what she actually paid.
+  priceKobo   Int
+  productName String
+  size        String
+  color       String?
+}
