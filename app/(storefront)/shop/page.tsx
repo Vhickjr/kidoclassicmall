@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import ProductCard, { toProductCard } from "@/app/_components/product-card";
 
 export const metadata: Metadata = {
@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
   const { category } = await searchParams;
   const activeSlug = typeof category === "string" ? category : null;
+  const prisma = getPrisma();
 
   const [categories, products] = await Promise.all([
     prisma.category.findMany({ orderBy: { name: "asc" } }),

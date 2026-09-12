@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { compareSizes, imageList } from "@/lib/format";
 import SizeSelector from "./size-selector";
 
 async function getPublishedProduct(slug: string) {
-  const product = await prisma.product.findUnique({
+  const product = await getPrisma().product.findUnique({
     where: { slug },
     include: { variants: true, category: true },
   });

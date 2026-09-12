@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth";
 
@@ -64,6 +64,8 @@ export async function POST(request: Request) {
     }
   }
 
+  const prisma = getPrisma();
+
   // Slugs must be unique. Append a short suffix rather than failing, so adding
   // a second "Blue Mom Jeans" does not make you rename the first one.
   const base = slugify(name);
@@ -115,7 +117,7 @@ export async function GET() {
     return NextResponse.json({ error: "Not authorised." }, { status: 401 });
   }
 
-  const products = await prisma.product.findMany({
+  const products = await getPrisma().product.findMany({
     orderBy: { createdAt: "desc" },
     include: { variants: true, category: true },
     take: 100,

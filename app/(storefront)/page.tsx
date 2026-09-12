@@ -7,7 +7,7 @@ import {
   Star,
   Truck,
 } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import ProductCard, { toProductCard } from "@/app/_components/product-card";
 import DealCountdown from "@/app/_components/deal-countdown";
 
@@ -66,6 +66,8 @@ const VALUE_PROPS = [
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const prisma = getPrisma();
+
   const [categories, bestsellers] = await Promise.all([
     prisma.category.findMany({ orderBy: { name: "asc" } }),
     prisma.product.findMany({

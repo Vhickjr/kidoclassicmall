@@ -88,6 +88,10 @@ Visit `/admin/products/new` and add your first product.
 2. hPanel, Websites, Node.js Apps, Import Git Repository.
 3. Pick Node 20 or 22, framework Next.js.
 4. Add `DATABASE_URL` and `ADMIN_SECRET` as environment variables in the panel.
+   The build itself does not need them — `lib/prisma.ts` builds its client on
+   first query rather than on import, so `next build` never asks for
+   credentials. Keep it that way: anything read at module scope in a page turns
+   into a build-time requirement, and the build host has no database.
 5. Point a subdomain at it, `new.kidoclassicmall.com`, while you build.
 
 Every push to the main branch rebuilds. Leave the WooCommerce site on the main
