@@ -1,4 +1,5 @@
 import { Mail, MapPin, Phone } from "lucide-react";
+import Logo from "@/app/_components/logo";
 
 // Every destination below is a screen that does not exist yet, so the columns
 // render as text. They become links as those screens land.
@@ -20,11 +21,11 @@ const SERVICE = [
 
 export default function SiteFooter() {
   return (
-    <footer className="mt-20 bg-foreground text-background">
+    <footer className="mt-20 bg-brand-dark text-white">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 md:grid-cols-4">
         <div>
-          <p className="text-xl font-bold tracking-tight">Kidoclassic</p>
-          <ul className="mt-6 space-y-3 text-sm text-background/70">
+          <Logo size={44} tone="light" />
+          <ul className="mt-6 space-y-3 text-sm text-white/75">
             <li className="flex items-center gap-3">
               <Phone aria-hidden className="size-4 shrink-0" />
               (704) 555-0127
@@ -45,19 +46,19 @@ export default function SiteFooter() {
 
         <div>
           <h2 className="text-sm font-semibold">Subscribe</h2>
-          <p className="mt-5 text-sm text-background/70">
+          <p className="mt-5 text-sm text-white/75">
             Enter your email below to be the first to know about new collections
             and product launches.
           </p>
           {/* Not wired up: there is no newsletter list or endpoint yet. */}
-          <p className="mt-4 rounded border border-background/25 px-4 py-3 text-sm text-background/40">
+          <p className="mt-4 rounded border border-white/30 px-4 py-3 text-sm text-white/50">
             Your Email
           </p>
         </div>
       </div>
 
-      <div className="border-t border-background/15">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 px-4 py-6 text-sm text-background/60 sm:flex-row sm:justify-between">
+      <div className="border-t border-white/20">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 px-4 py-6 text-sm text-white/70 sm:flex-row sm:justify-between">
           <p>Visa &middot; Mastercard &middot; Verve</p>
           <p>
             &copy; {new Date().getFullYear()} Kidoclassic Mall. All rights
@@ -74,7 +75,7 @@ function FooterColumn({ title, items }: { title: string; items: string[] }) {
   return (
     <div>
       <h2 className="text-sm font-semibold">{title}</h2>
-      <ul className="mt-5 space-y-3 text-sm text-background/70">
+      <ul className="mt-5 space-y-3 text-sm text-white/75">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}

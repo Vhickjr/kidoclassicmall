@@ -7,22 +7,39 @@ const photo = (seed: string) => `https://picsum.photos/seed/${seed}/900/1200`;
 const url = (process.env.DATABASE_URL ?? "").replace(/^mysql:\/\//, "mariadb://");
 const prisma = new PrismaClient({ adapter: new PrismaMariaDb(url) });
 
-const letterSizes = (priceKobo: number, compareAtKobo: number | null) =>
-  [
-    { size: "S", stock: 6 },
-    { size: "M", stock: 4 },
-    { size: "L", stock: 2 },
-    { size: "XL", stock: 0 },
-  ].map((row) => ({ ...row, priceKobo, compareAtKobo }));
+const LETTER_STOCK = [
+  { size: "S", stock: 6 },
+  { size: "M", stock: 4 },
+  { size: "L", stock: 2 },
+  { size: "XL", stock: 0 },
+];
 
-const shoeSizes = (priceKobo: number, compareAtKobo: number | null) =>
-  [
-    { size: "41", stock: 1 },
-    { size: "37", stock: 4 },
-    { size: "39", stock: 0 },
-    { size: "38", stock: 3 },
-    { size: "40", stock: 5 },
-  ].map((row) => ({ ...row, priceKobo, compareAtKobo }));
+const SHOE_STOCK = [
+  { size: "37", stock: 4 },
+  { size: "38", stock: 3 },
+  { size: "39", stock: 0 },
+  { size: "40", stock: 5 },
+  { size: "41", stock: 1 },
+];
+
+/** One row per size/colour pair, which is what the unique constraint expects.
+ *  The second colour carries less stock so the grid has sold-out combinations. */
+function variants(
+  rows: { size: string; stock: number }[],
+  colors: string[],
+  priceKobo: number,
+  compareAtKobo: number | null
+) {
+  return colors.flatMap((color, colorIndex) =>
+    rows.map((row) => ({
+      size: row.size,
+      color,
+      priceKobo,
+      compareAtKobo,
+      stock: colorIndex === 0 ? row.stock : Math.max(0, row.stock - 2),
+    }))
+  );
+}
 
 async function main() {
   const categories = [
@@ -46,73 +63,77 @@ async function main() {
       brand: "Kido Denim",
       name: "High Waist Mom Jeans",
       slug: "high-waist-mom-jeans",
-      description: "Rigid denim, high rise, tapered leg.\nRuns true to size.",
-      images: [photo("jeans-a1"), photo("jeans-a2")],
+      description:
+        "Rigid denim with a high rise and a tapered leg. Sits at the natural waist and holds its shape through the day.\n\nRuns true to size. Model is 5'8\" and wears a size M.",
+      images: [photo("jeans-a1"), photo("jeans-a2"), photo("jeans-a3"), photo("jeans-a4")],
       categorySlug: "jeans",
-      variants: letterSizes(1850000, 2200000),
+      variants: variants(LETTER_STOCK, ["Mid Wash", "Black"], 1850000, 2200000),
     },
     {
       brand: "Kido Denim",
       name: "Straight Leg Rigid Jeans",
       slug: "straight-leg-rigid-jeans",
-      description: "Mid rise, straight through the leg.",
-      images: [photo("jeans-b1")],
+      description:
+        "Mid rise, straight through the leg, no stretch. The pair you reach for when nothing else fits right.",
+      images: [photo("jeans-b1"), photo("jeans-b2")],
       categorySlug: "jeans",
-      variants: letterSizes(1650000, null),
+      variants: variants(LETTER_STOCK, ["Light Wash"], 1650000, null),
     },
     {
       brand: "Kido Denim",
       name: "Wide Leg Cargo Jeans",
       slug: "wide-leg-cargo-jeans",
-      description: "Utility pockets, heavyweight denim.",
-      images: [photo("jeans-c1"), photo("jeans-c2")],
+      description:
+        "Heavyweight denim with utility pockets at the thigh. Wide through the leg, cropped at the ankle.",
+      images: [photo("jeans-c1"), photo("jeans-c2"), photo("jeans-c3")],
       categorySlug: "jeans",
-      variants: letterSizes(2100000, 2500000),
+      variants: variants(LETTER_STOCK, ["Dark Wash", "Cream"], 2100000, 2500000),
     },
     {
       brand: "Kido Denim",
       name: "Cropped Denim Jacket",
       slug: "cropped-denim-jacket",
-      description: "Boxy fit, raw hem.",
-      images: [photo("denim-d1")],
+      description: "Boxy fit with a raw hem and antique brass hardware.",
+      images: [photo("denim-d1"), photo("denim-d2")],
       categorySlug: "denim",
-      variants: letterSizes(2750000, 3200000),
+      variants: variants(LETTER_STOCK, ["Indigo", "White"], 2750000, 3200000),
     },
     {
       brand: "Kido Denim",
       name: "Stretch Skinny Jeans",
       slug: "stretch-skinny-jeans",
-      description: "Four-way stretch, holds its shape.",
+      description: "Four-way stretch that recovers overnight rather than bagging at the knee.",
       images: [photo("jeans-e1")],
       categorySlug: "jeans",
-      variants: letterSizes(1750000, 1950000),
+      variants: variants(LETTER_STOCK, ["Black"], 1750000, 1950000),
     },
     {
       brand: "Kido Studio",
       name: "Leather Block Heel",
       slug: "leather-block-heel",
-      description: "Softened leather upper, 7cm block heel.",
-      images: [photo("heel-a1"), photo("heel-a2"), photo("heel-a3")],
+      description:
+        "Softened leather upper on a 7cm block heel. Leather lined, with a padded insole for standing all evening.",
+      images: [photo("heel-a1"), photo("heel-a2"), photo("heel-a3"), photo("heel-a4")],
       categorySlug: "footwear",
-      variants: shoeSizes(2400000, 2900000),
+      variants: variants(SHOE_STOCK, ["Black", "Tan"], 2400000, 2900000),
     },
     {
       brand: "Kido Studio",
       name: "Strappy Flat Sandal",
       slug: "strappy-flat-sandal",
-      description: "Everyday flat, cushioned footbed.",
-      images: [photo("sandal-a1")],
+      description: "An everyday flat with a cushioned footbed and an adjustable ankle strap.",
+      images: [photo("sandal-a1"), photo("sandal-a2")],
       categorySlug: "footwear",
-      variants: shoeSizes(1250000, null),
+      variants: variants(SHOE_STOCK, ["Tan"], 1250000, null),
     },
     {
       brand: "Kido Studio",
       name: "Pointed Court Shoe",
       slug: "pointed-court-shoe",
-      description: "Pointed toe, covered heel.",
+      description: "Pointed toe, covered heel, and a shape that reads formal without the height.",
       images: [photo("court-a1"), photo("court-a2")],
       categorySlug: "footwear",
-      variants: shoeSizes(2200000, 2600000),
+      variants: variants(SHOE_STOCK, ["Burgundy", "Black"], 2200000, 2600000),
     },
     {
       brand: "Kido Denim",
@@ -122,8 +143,8 @@ async function main() {
       images: [photo("jeans-f1")],
       categorySlug: "jeans",
       variants: [
-        { size: "S", priceKobo: 1450000, compareAtKobo: null, stock: 0 },
-        { size: "M", priceKobo: 1450000, compareAtKobo: null, stock: 0 },
+        { size: "S", color: "Grey", priceKobo: 1450000, compareAtKobo: null, stock: 0 },
+        { size: "M", color: "Grey", priceKobo: 1450000, compareAtKobo: null, stock: 0 },
       ],
     },
     {
@@ -134,21 +155,21 @@ async function main() {
       images: [photo("jacket-a1")],
       categorySlug: "denim",
       status: "DRAFT" as const,
-      variants: letterSizes(3200000, null),
+      variants: variants(LETTER_STOCK, ["Black"], 3200000, null),
     },
   ];
 
-  for (const { variants, categorySlug, ...product } of products) {
+  for (const { variants: rows, categorySlug, ...product } of products) {
     await prisma.product.deleteMany({ where: { slug: product.slug } });
     await prisma.product.create({
       data: {
         ...product,
         status: product.status ?? "PUBLISHED",
         categoryId: saved.get(categorySlug) ?? null,
-        variants: { create: variants },
+        variants: { create: rows },
       },
     });
-    console.log("seeded", product.slug);
+    console.log("seeded", product.slug, `(${rows.length} variants)`);
   }
 }
 

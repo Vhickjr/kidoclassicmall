@@ -19,10 +19,10 @@ export default function PasswordChangedPage() {
         </AuthSplit>
       </div>
 
-      <div className="fixed inset-0 flex items-center justify-center bg-line/30 p-6">
-        <div className="w-full max-w-md bg-background px-10 py-12 text-center shadow-2xl">
-          <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-line/50">
-            <span className="flex size-12 items-center justify-center rounded-full bg-foreground">
+      <div className="fixed inset-0 flex items-center justify-center bg-brand-soft/30 p-6">
+        <div className="w-full max-w-md bg-surface px-10 py-12 text-center shadow-2xl">
+          <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-brand-soft/50">
+            <span className="flex size-12 items-center justify-center rounded-full bg-brand">
               <Check aria-hidden className="size-6 text-background" />
             </span>
           </div>
@@ -36,7 +36,7 @@ export default function PasswordChangedPage() {
 
           <Link
             href="/login"
-            className="mt-8 block w-full rounded-lg bg-foreground py-3.5 text-center text-sm text-background"
+            className="mt-8 block w-full rounded-lg bg-brand py-3.5 text-center text-sm text-white"
           >
             Back to Login
           </Link>

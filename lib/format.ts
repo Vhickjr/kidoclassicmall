@@ -45,6 +45,33 @@ export function imageList(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string" && item.length > 0);
 }
 
+/** ProductVariant.color is free text, but the filters and the product page draw
+ *  it as a swatch, which needs an actual colour. Anything unrecognised falls
+ *  back to grey rather than rendering an invisible chip. Extend as stock needs. */
+const COLOR_SWATCHES: Record<string, string> = {
+  black: "#171717",
+  white: "#f5f5f5",
+  cream: "#efe7d7",
+  grey: "#9ca3af",
+  red: "#ef4444",
+  burgundy: "#7f1d34",
+  pink: "#ec4899",
+  orange: "#f59e0b",
+  yellow: "#eab308",
+  green: "#65a30d",
+  blue: "#3b5bdb",
+  "light wash": "#9db8d2",
+  "mid wash": "#5b7fa6",
+  "dark wash": "#33415c",
+  indigo: "#3f3d8f",
+  tan: "#c08552",
+  brown: "#6b4423",
+};
+
+export function colorSwatch(color: string): string {
+  return COLOR_SWATCHES[color.trim().toLowerCase()] ?? "#d4d4d4";
+}
+
 export function koboToNaira(kobo: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",

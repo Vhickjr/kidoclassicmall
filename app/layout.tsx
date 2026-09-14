@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { readSettings } from "@/lib/settings";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,10 +21,13 @@ export const metadata: Metadata = {
   description: "Denim, jeans and footwear.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const settings = await readSettings();
+
   return (
     <html
       lang="en"
+      data-theme={settings.appearance}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

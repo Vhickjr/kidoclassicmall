@@ -40,11 +40,46 @@ model Product {
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   variants ProductVariant[]
+  wishedBy WishlistItem[]
+  reviews  Review[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
+}
+
+/// Saved for later. Keyed by the same cookie as the cart until logins exist.
+model WishlistItem {
+  id        String  @id @default(cuid())
+  sessionId String?
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, productId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String  @id @default(cuid())
+  sessionId String?
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind   String
+  title  String
+  body   String?
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([userId])
 }
 
 enum Status {
@@ -81,20 +116,107 @@ model ProductVariant {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
   firstName    String?
   lastName     String?
-  role         Role     @default(CUSTOMER)
-  orders       Order[]
-  carts        Cart[]
-  createdAt    DateTime @default(now())
+  phone        String?
+  role         Role      @default(CUSTOMER)
+  orders        Order[]
+  carts         Cart[]
+  addresses     Address[]
+  wishlist      WishlistItem[]
+  notifications Notification[]
+  sessions      Session[]
+  reviews       Review[]
+
+  /// Lets a super admin switch off a staff account without deleting its history.
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+/// The customer's address book. Orders copy these fields rather than pointing
+/// at a row, so editing an address here never rewrites a past order.
+model Address {
+  id     String @id @default(cuid())
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Guests get an address book too, keyed by the same cookie the cart uses.
+  sessionId String?
+
+  fullName   String
+  phone      String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  postalCode String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model DiscountCode {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  percentOff    Int?
+  amountOffKobo Int?
+  active        Boolean   @default(true)
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
 }
 
 enum Role {
   CUSTOMER
+  /// Shop staff: products, orders, categories, discounts, review moderation.
   ADMIN
+  /// Everything ADMIN can do, plus managing who the staff are.
+  SUPER_ADMIN
+}
+
+/// Opaque server-side sessions rather than a signed token, so signing someone
+/// out actually revokes their access instead of waiting for an expiry.
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Review {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rating Int
+  title  String?
+  body   String  @db.Text
+
+  /// Nothing is public until a member of staff approves it.
+  status      ReviewStatus @default(PENDING)
+  moderatedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  /// One review per customer per product.
+  @@unique([productId, userId])
+  @@index([status])
 }
 
 model Cart {
@@ -125,20 +247,33 @@ model Order {
   userId String?
   user   User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  // Guest orders are found again through the same cookie as the cart, so order
+  // history works before there is any login.
+  sessionId String?
+
   email  String
   phone  String?
   status OrderStatus @default(PENDING)
 
-  // Recomputed server-side from variant prices at checkout. Never trust a total
-  // sent from the browser.
-  totalKobo Int
+  // Every figure here is recomputed server-side from variant prices at checkout.
+  // Never trust a total sent from the browser.
+  subtotalKobo Int
+  deliveryKobo Int @default(0)
+  discountKobo Int @default(0)
+  discountCode String?
+  totalKobo    Int
+
+  paymentMethod String?
 
   // Shipping address kept as plain fields rather than a relation: an order is a
   // historical record and must not change when a customer later edits her
   // saved address.
-  addressLine String?
-  city        String?
-  state       String?
+  recipientName String?
+  addressLine   String?
+  line2         String?
+  city          String?
+  state         String?
+  postalCode    String?
 
   // Set from the ALAT Pay webhook, not from the redirect back to the site.
   paymentRef String?   @unique
@@ -150,6 +285,7 @@ model Order {
 
   @@index([status])
   @@index([userId])
+  @@index([sessionId])
 }
 
 enum OrderStatus {

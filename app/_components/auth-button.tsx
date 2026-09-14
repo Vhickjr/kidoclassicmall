@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const STYLE =
-  "mt-7 block w-full rounded-lg bg-foreground py-3.5 text-center text-sm text-background";
+  "mt-7 block w-full rounded-lg bg-brand py-3.5 text-center text-sm text-white";
 
 /** With an `href` this walks to the next screen so the flow can be clicked
  *  through. Without one it is inert: these are UI shells, and authentication is

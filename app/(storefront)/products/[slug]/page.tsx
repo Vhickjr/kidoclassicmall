@@ -2,7 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPrisma } from "@/lib/prisma";
 import { compareSizes, imageList } from "@/lib/format";
-import SizeSelector from "./size-selector";
+import { readSessionId } from "@/lib/cart";
+import { getSessionUser } from "@/lib/auth";
+import ProductCard, { toProductCard } from "@/app/_components/product-card";
+import Breadcrumb from "@/app/_components/breadcrumb";
+import StarRating from "@/app/_components/star-rating";
+import ValueProps from "@/app/_components/value-props";
+import Gallery from "./gallery";
+import BuyPanel from "./buy-panel";
+import ProductTabs from "./product-tabs";
 
 async function getPublishedProduct(slug: string) {
   const product = await getPrisma().product.findUnique({
@@ -35,55 +43,144 @@ export default async function ProductPage({
 
   if (!product) notFound();
 
-  const images = imageList(product.images);
-  const variants = [...product.variants].sort((a, b) =>
-    compareSizes(a.size, b.size)
-  );
+  const related = product.categoryId
+    ? await getPrisma().product.findMany({
+        where: {
+          status: "PUBLISHED",
+          categoryId: product.categoryId,
+          NOT: { id: product.id },
+        },
+        include: { variants: true },
+        orderBy: { createdAt: "desc" },
+        take: 4,
+      })
+    : [];
+
+  const colors = [
+    ...new Set(
+      product.variants.map((v) => v.color).filter((c): c is string => Boolean(c))
+    ),
+  ];
+  const sizes = [...new Set(product.variants.map((v) => v.size))].sort(compareSizes);
+  const inStock = product.variants.some((variant) => variant.stock > 0);
+
+  const user = await getSessionUser();
+
+  const approved = await getPrisma().review.findMany({
+    where: { productId: product.id, status: "APPROVED" },
+    include: { user: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const averageRating =
+    approved.length > 0
+      ? approved.reduce((sum, review) => sum + review.rating, 0) / approved.length
+      : null;
+
+  const canReview = user
+    ? (await getPrisma().orderItem.findFirst({
+        where: { order: { userId: user.id }, variant: { productId: product.id } },
+      })) !== null
+    : false;
+
+  const sessionId = await readSessionId();
+  const saved = sessionId
+    ? (await getPrisma().wishlistItem.findUnique({
+        where: { sessionId_productId: { sessionId, productId: product.id } },
+      })) !== null
+    : false;
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-10 md:grid-cols-2">
-      <div className="grid gap-3">
-        {images.length === 0 ? (
-          <div className="flex aspect-3/4 items-center justify-center bg-line/40 text-sm text-muted">
-            No photo
-          </div>
-        ) : (
-          images.map((src) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={src}
-              src={src}
-              alt={product.name}
-              className="aspect-3/4 w-full bg-line/40 object-cover"
-            />
-          ))
-        )}
+    <div>
+      <div className="mx-auto w-full max-w-6xl px-4 pt-8">
+        <Breadcrumb
+          trail={[
+            { label: "Home", href: "/" },
+            { label: "Shop", href: "/shop" },
+            { label: product.name },
+          ]}
+        />
       </div>
 
-      <div className="md:sticky md:top-10 md:self-start">
-        {product.category && (
-          <p className="text-sm text-muted">{product.category.name}</p>
-        )}
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-          {product.name}
-        </h1>
+      <div className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-8 md:grid-cols-2">
+        <Gallery images={imageList(product.images)} alt={product.name} />
 
-        <SizeSelector
-          variants={variants.map((variant) => ({
-            id: variant.id,
-            size: variant.size,
-            color: variant.color,
-            priceKobo: variant.priceKobo,
-            stock: variant.stock,
+        <div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              {product.brand && (
+                <h1 className="text-2xl font-bold tracking-tight">
+                  {product.brand}
+                </h1>
+              )}
+              <p className="mt-1 text-lg text-muted">{product.name}</p>
+            </div>
+
+            <span
+              className={`shrink-0 rounded px-2.5 py-1 text-xs ${
+                inStock
+                  ? "bg-green-100 text-green-800"
+                  : "bg-line text-muted"
+              }`}
+            >
+              {inStock ? "In Stock" : "Sold Out"}
+            </span>
+          </div>
+
+          <div className="mt-3">
+            <StarRating rating={averageRating} count={approved.length} />
+          </div>
+
+          <BuyPanel
+            productId={product.id}
+            saved={saved}
+            variants={product.variants.map((variant) => ({
+              id: variant.id,
+              size: variant.size,
+              color: variant.color,
+              priceKobo: variant.priceKobo,
+              compareAtKobo: variant.compareAtKobo,
+              stock: variant.stock,
+            }))}
+          />
+        </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-6xl px-4">
+        <ProductTabs
+          description={product.description}
+          colors={colors}
+          sizes={sizes}
+          canReview={canReview}
+          reviews={approved.map((review) => ({
+            id: review.id,
+            rating: review.rating,
+            title: review.title,
+            body: review.body,
+            author: review.user.firstName ?? "Verified buyer",
+            createdAt: review.createdAt.toLocaleDateString("en-NG", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
           }))}
         />
-
-        {product.description && (
-          <p className="mt-8 whitespace-pre-line text-sm leading-relaxed text-muted">
-            {product.description}
-          </p>
-        )}
       </div>
+
+      {related.length > 0 && (
+        <section className="mx-auto w-full max-w-6xl px-4 py-16">
+          <h2 className="text-2xl tracking-tight">Related Products</h2>
+          <ul className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 lg:grid-cols-4">
+            {related.map((item) => (
+              <li key={item.id}>
+                <ProductCard product={toProductCard(item)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <ValueProps />
     </div>
   );
 }

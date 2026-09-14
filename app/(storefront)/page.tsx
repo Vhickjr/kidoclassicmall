@@ -1,15 +1,9 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  BadgeDollarSign,
-  CreditCard,
-  Headphones,
-  Star,
-  Truck,
-} from "lucide-react";
+import { ArrowRight, Star } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import ProductCard, { toProductCard } from "@/app/_components/product-card";
 import DealCountdown from "@/app/_components/deal-countdown";
+import ValueProps from "@/app/_components/value-props";
 
 // Placeholder photography and marketing copy. None of this has a model behind
 // it yet, so it lives here until there is somewhere to edit it from.
@@ -38,29 +32,6 @@ const TESTIMONIALS = [
   },
 ];
 
-const VALUE_PROPS = [
-  {
-    icon: Truck,
-    title: "Free Shipping",
-    body: "Free shipping on orders above ₦150,000",
-  },
-  {
-    icon: BadgeDollarSign,
-    title: "Money Guarantee",
-    body: "Within 30 days for an exchange",
-  },
-  {
-    icon: Headphones,
-    title: "Online Support",
-    body: "24 hours a day, 7 days a week",
-  },
-  {
-    icon: CreditCard,
-    title: "Flexible Payment",
-    body: "Pay with multiple cards and transfers",
-  },
-];
-
 // Without this the page is prerendered at build time, so a newly published
 // product or a size selling out would not show until the next deploy.
 export const dynamic = "force-dynamic";
@@ -81,17 +52,19 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-line/40">
+      <section className="bg-gradient-to-br from-brand-soft via-background to-brand-soft/60">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-2">
           <div className="relative z-10">
-            <p className="text-sm">Classic Exclusive</p>
+            <p className="text-sm font-semibold uppercase tracking-widest text-brand-deep">
+              Classic Exclusive
+            </p>
             <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
               Women&rsquo;s Collection
             </h1>
-            <p className="mt-3 text-muted">Up to 40% off</p>
+            <p className="mt-3 text-lg font-semibold text-brand-dark">Up to 40% off</p>
             <Link
               href="/shop"
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm text-background"
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm text-white"
             >
               Shop now
               <ArrowRight aria-hidden className="size-4" />
@@ -118,7 +91,7 @@ export default async function HomePage() {
       {/* Shop by categories */}
       {categories.length > 0 && (
         <section className="mx-auto w-full max-w-6xl px-4 py-16">
-          <h2 className="text-xl font-semibold tracking-tight">
+          <h2 className="text-xl font-semibold tracking-tight text-brand-dark">
             Shop by Categories
           </h2>
 
@@ -129,7 +102,7 @@ export default async function HomePage() {
                   href={`/shop?category=${category.slug}`}
                   className="group block"
                 >
-                  <div className="relative aspect-3/4 overflow-hidden bg-line/40">
+                  <div className="relative aspect-3/4 overflow-hidden bg-brand-soft/40">
                     {category.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -138,7 +111,7 @@ export default async function HomePage() {
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     )}
-                    <span className="absolute inset-x-3 bottom-3 bg-background py-2 text-center text-sm">
+                    <span className="absolute inset-x-3 bottom-3 bg-surface py-2 text-center text-sm">
                       {category.name}
                     </span>
                   </div>
@@ -151,7 +124,7 @@ export default async function HomePage() {
 
       {/* Bestsellers */}
       <section className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="text-center text-xl font-semibold tracking-tight">
+        <h2 className="text-center text-xl font-semibold tracking-tight text-brand-dark">
           Our Bestseller
         </h2>
 
@@ -173,7 +146,7 @@ export default async function HomePage() {
       {/* Deals of the month */}
       <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-2">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">
+          <h2 className="text-xl font-semibold tracking-tight text-brand-dark">
             Deals of the Month
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-muted">
@@ -185,7 +158,7 @@ export default async function HomePage() {
 
           <Link
             href="/shop"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm text-background"
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm text-white"
           >
             View all products
             <ArrowRight aria-hidden className="size-4" />
@@ -196,20 +169,20 @@ export default async function HomePage() {
         <img
           src={photo("deal-of-month")}
           alt=""
-          className="aspect-4/3 w-full bg-line/40 object-cover"
+          className="aspect-4/3 w-full bg-brand-soft/40 object-cover"
         />
       </section>
 
       {/* Testimonials */}
-      <section className="bg-line/40">
+      <section className="bg-gradient-to-br from-brand-soft via-background to-brand-soft/60">
         <div className="mx-auto w-full max-w-6xl px-4 py-16">
-          <h2 className="text-xl font-semibold tracking-tight">
+          <h2 className="text-xl font-semibold tracking-tight text-brand-dark">
             What our customers say
           </h2>
 
           <ul className="mt-8 grid gap-4 md:grid-cols-3">
             {TESTIMONIALS.map((testimonial) => (
-              <li key={testimonial.name} className="bg-background p-6">
+              <li key={testimonial.name} className="rounded-lg bg-surface p-6 shadow-sm">
                 <div className="flex gap-1 text-amber-500">
                   {Array.from({ length: 5 }, (_, index) => (
                     <Star
@@ -232,7 +205,7 @@ export default async function HomePage() {
 
       {/* Instagram */}
       <section className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="text-center text-xl font-semibold tracking-tight">
+        <h2 className="text-center text-xl font-semibold tracking-tight text-brand-dark">
           Our Instagram Stories
         </h2>
 
@@ -243,25 +216,14 @@ export default async function HomePage() {
               <img
                 src={photo(seed)}
                 alt=""
-                className="aspect-square w-full bg-line/40 object-cover"
+                className="aspect-square w-full bg-brand-soft/40 object-cover"
               />
             </li>
           ))}
         </ul>
       </section>
 
-      {/* Value props */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-4">
-        <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {VALUE_PROPS.map((prop) => (
-            <li key={prop.title}>
-              <prop.icon aria-hidden className="size-6" />
-              <h3 className="mt-3 text-sm font-semibold">{prop.title}</h3>
-              <p className="mt-1 text-sm text-muted">{prop.body}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ValueProps />
     </div>
   );
 }

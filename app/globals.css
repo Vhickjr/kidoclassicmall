@@ -1,17 +1,60 @@
 @import "tailwindcss";
 
+/* Kidoclassic brand palette.
+   F964AB rose      — primary actions
+   AF187B magenta   — hover and active
+   89083C burgundy  — footer, headings, prices
+   F4D6E9 blush     — page ground, tinted bands
+   2B2127 ink       — body text
+
+   The page itself is blush rather than white, and cards sit on it in white.
+   That is what stops the store reading as a black-and-white template with pink
+   buttons bolted on. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --muted: #6b7280;
-  --line: #e5e7eb;
+  --background: #fff4f9;
+  --surface: #ffffff;
+  --surface-tint: #fbe6f0;
+
+  --foreground: #2b2127;
+  --muted: #7d6a74;
+  --line: #f1d5e4;
+
+  --brand: #f964ab;
+  --brand-deep: #af187b;
+  --brand-dark: #e33b7e;
+  --brand-soft: #f4d6e9;
+}
+
+/* Driven by the Appearance setting in the account area, not by the OS. */
+[data-theme="dark"] {
+  --background: #191218;
+  --surface: #221a20;
+  --surface-tint: #2d2029;
+
+  --foreground: #f7eef3;
+  --muted: #b39fab;
+  --line: #3b2c35;
+
+  --brand: #f964ab;
+  --brand-deep: #d64d94;
+  --brand-dark: #f4d6e9;
+  --brand-soft: #3a2632;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-tint: var(--surface-tint);
+
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-line: var(--line);
+
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-soft: var(--brand-soft);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -20,4 +63,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--brand-dark);
 }

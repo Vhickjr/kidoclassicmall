@@ -30,7 +30,7 @@ export default function OtpPanel() {
             inputMode="numeric"
             maxLength={1}
             aria-label={`Digit ${index + 1}`}
-            className="size-14 rounded-lg border border-line text-center text-lg outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20"
+            className="size-14 rounded-lg border border-line text-center text-lg outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
           />
         ))}
       </div>

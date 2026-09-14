@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Logo from "@/app/_components/logo";
 
 // Placeholder photography, same as the storefront.
 const photo = (seed: string) => `https://picsum.photos/seed/${seed}/1200/1400`;
@@ -19,15 +19,12 @@ export default function AuthSplit({
         <img
           src={photo(photoSeed)}
           alt=""
-          className="h-full w-full bg-line/40 object-cover"
+          className="h-full w-full bg-brand-soft/40 object-cover"
         />
         {showLogo && (
-          <Link
-            href="/"
-            className="absolute left-10 top-8 text-2xl font-bold tracking-tight"
-          >
-            Kidoclassic
-          </Link>
+          <span className="absolute left-10 top-8">
+            <Logo size={56} showLabel={false} />
+          </span>
         )}
       </div>
 

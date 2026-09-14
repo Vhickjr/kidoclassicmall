@@ -1,53 +1,58 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import AuthSplit from "@/app/_components/auth-split";
 import AuthField from "@/app/_components/auth-field";
-import AuthButton from "@/app/_components/auth-button";
-import NotWired from "@/app/_components/not-wired";
+import AuthForm from "@/app/_components/auth-form";
+import { signIn } from "@/app/_actions/auth";
+import { getSessionUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Login",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  if (await getSessionUser()) redirect("/account");
+
   return (
     <AuthSplit photoSeed="auth-login" showLogo>
       <h1 className="text-3xl font-bold tracking-tight">Welcome 👋</h1>
       <p className="mt-2 text-sm text-muted">Please login here</p>
 
-      <AuthField
-        label="Email Address"
-        type="email"
-        placeholder="you@example.com"
-        autoComplete="email"
-      />
-      <AuthField
-        label="Password"
-        type="password"
-        placeholder="••••••••••••"
-        autoComplete="current-password"
-      />
+      <AuthForm action={signIn} label="Login">
+        <AuthField
+          label="Email Address"
+          name="email"
+          type="email"
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+        />
+        <AuthField
+          label="Password"
+          name="password"
+          type="password"
+          placeholder="••••••••••••"
+          autoComplete="current-password"
+          required
+        />
 
-      <div className="mt-5 flex items-center justify-between">
-        <label className="flex items-center gap-2.5 text-sm">
-          <input
-            type="checkbox"
-            defaultChecked
-            className="size-4 accent-foreground"
-          />
-          Remember me
-        </label>
-        <Link href="/forgot-password" className="text-sm hover:text-muted">
-          Forgot password?
-        </Link>
-      </div>
+        <div className="mt-5 flex items-center justify-between">
+          <label className="flex items-center gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              name="remember"
+              defaultChecked
+              className="size-4 accent-brand"
+            />
+            Remember me
+          </label>
+          <Link href="/forgot-password" className="text-sm hover:text-muted">
+            Forgot password?
+          </Link>
+        </div>
+      </AuthForm>
 
-      <AuthButton label="Login" />
-
-      <NotWired>Shell only. Signing in does nothing yet.</NotWired>
-
-      {/* Not in the mockup, but a login screen with no route to registration
-          strands new customers. Remove if you would rather match it exactly. */}
       <p className="mt-6 text-center text-sm text-muted">
         New here?{" "}
         <Link href="/signup" className="text-foreground underline">
