@@ -46,7 +46,7 @@ export default async function PaymentMethodPage() {
 
             <div className="mt-6 border border-dashed border-line p-5 text-sm text-muted">
               <p className="font-semibold text-foreground">
-                Card details are collected by ALAT Pay, not here
+                Card details are entered in ALAT Pay&rsquo;s window
               </p>
               <p className="mt-2 leading-relaxed">
                 The mockup for this screen asks for a card number, expiry and
@@ -57,8 +57,8 @@ export default async function PaymentMethodPage() {
                 <code>Order.paymentRef</code>.
               </p>
               <p className="mt-2 leading-relaxed">
-                The handoff is not connected yet, so placing an order leaves it
-                unpaid and does not move any stock.
+                Choosing Cash on Delivery skips the payment window and leaves the
+                order for staff to settle in person.
               </p>
             </div>
 

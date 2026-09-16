@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Eye, Heart, Repeat } from "lucide-react";
-import { imageList, koboToNaira } from "@/lib/format";
+import { imageList } from "@/lib/format";
+import Money from "@/app/_components/money";
 
 export type ProductCardData = {
   slug: string;
@@ -99,12 +100,12 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
       <p className="mt-1 flex items-baseline gap-2 text-sm">
         <span className="font-semibold text-brand-dark">
           {product.mixedPricing
-            ? `From ${koboToNaira(product.priceKobo)}`
-            : koboToNaira(product.priceKobo)}
+            ? <Money prefix="From" kobo={product.priceKobo} />
+            : <Money kobo={product.priceKobo} />}
         </span>
         {product.compareAtKobo && product.compareAtKobo > product.priceKobo && (
           <span className="text-muted line-through">
-            {koboToNaira(product.compareAtKobo)}
+            <Money kobo={product.compareAtKobo} />
           </span>
         )}
       </p>

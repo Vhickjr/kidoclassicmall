@@ -136,9 +136,9 @@ export async function selectPaymentMethod(formData: FormData) {
  * Writes the order. Totals are recomputed here from our own variant rows, so a
  * tampered form cannot change what is charged.
  *
- * Stock is deliberately NOT decremented yet: per the build spec that happens
- * inside a transaction at the moment payment confirms, in the ALAT Pay webhook.
- * Until that is wired, orders land as PENDING and stock is untouched.
+ * Stock is deliberately NOT decremented here. Per the checkout rules that only
+ * happens once ALAT Pay confirms the money, inside a transaction — see
+ * confirmAndFulfilOrder. An order leaves this function PENDING every time.
  */
 export async function placeOrder(formData: FormData) {
   const cart = await readCart();
@@ -194,7 +194,7 @@ export async function placeOrder(formData: FormData) {
     data: {
       sessionId,
       kind: "order-placed",
-      title: "Your order was placed successfully",
+      title: "Your order was placed",
       body: `Order ${order.id.slice(-8)} for ${koboToNaira(totals.totalKobo)}.`,
     },
   });
@@ -203,5 +203,12 @@ export async function placeOrder(formData: FormData) {
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
   revalidatePath("/", "layout");
-  redirect(`/checkout/confirmed?order=${order.id}`);
+
+  // Cash on delivery is settled in person, so it skips the payment window and
+  // the order simply waits for staff to mark it paid.
+  if (state.paymentMethod === "cash-on-delivery") {
+    redirect(`/checkout/confirmed?order=${order.id}`);
+  }
+
+  redirect(`/checkout/pay/${order.id}`);
 }

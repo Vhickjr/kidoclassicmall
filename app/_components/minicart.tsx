@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import { cartCount, cartSubtotalKobo, readCart } from "@/lib/cart";
-import { imageList, koboToNaira } from "@/lib/format";
+import { imageList } from "@/lib/format";
 import { removeCartItem } from "@/app/_actions/cart";
+import Money from "@/app/_components/money";
 
 export default async function Minicart() {
   const cart = await readCart();
@@ -48,7 +49,7 @@ export default async function Minicart() {
                         {line.variant.product.name}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold">
-                        {line.quantity} &times; {koboToNaira(line.variant.priceKobo)}
+                        {line.quantity} &times; <Money kobo={line.variant.priceKobo} />
                       </p>
                       <p className="mt-0.5 text-sm text-muted">
                         Size: {line.variant.size}
@@ -73,7 +74,7 @@ export default async function Minicart() {
               <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
                 <span className="text-sm font-semibold">Subtotal</span>
                 <span className="text-sm font-semibold">
-                  {koboToNaira(subtotal)}
+                  <Money kobo={subtotal} />
                 </span>
               </div>
 

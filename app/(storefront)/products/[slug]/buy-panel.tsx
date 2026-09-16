@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Minus, Plus } from "lucide-react";
-import { colorSwatch, compareSizes, koboToNaira } from "@/lib/format";
+import { colorSwatch, compareSizes } from "@/lib/format";
 import { addToCart } from "@/app/_actions/cart";
 import WishlistButton from "@/app/_components/wishlist-button";
+import Money from "@/app/_components/money";
 
 export type PanelVariant = {
   id: string;
@@ -57,11 +58,11 @@ export default function BuyPanel({
     <div>
       <p className="mt-4 flex items-baseline gap-3">
         <span className="text-2xl font-semibold text-brand-dark">
-          {koboToNaira(price)}
+          <Money kobo={price} />
         </span>
         {compareAt && compareAt > price && (
           <span className="text-lg text-muted line-through">
-            {koboToNaira(compareAt)}
+            <Money kobo={compareAt} />
           </span>
         )}
       </p>

@@ -130,10 +130,13 @@ model User {
   notifications Notification[]
   sessions      Session[]
   reviews       Review[]
+  passwordResets PasswordResetToken[]
 
   /// Lets a super admin switch off a staff account without deleting its history.
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive      Boolean  @default(true)
+  /// Set to true when the user clicks the link in their verification email.
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
 }
 
 /// The customer's address book. Orders copy these fields rather than pointing
@@ -187,6 +190,21 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Short-lived OTP codes for the forgot-password flow. Each row is one request;
+/// usedAt is set when the code is consumed so it cannot be replayed.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
@@ -311,4 +329,23 @@ model OrderItem {
   productName String
   size        String
   color       String?
+}
+
+/// Display currencies for the storefront.
+///
+/// Prices are stored once, in kobo, and converted for display only. The charge
+/// is always NGN because that is what the payment processor settles in, so a
+/// rate being briefly stale changes what a shopper reads, never what they pay.
+model Currency {
+  id     String @id @default(cuid())
+  code   String @unique
+  symbol String
+  name   String
+
+  /// How many units of this currency one naira buys. NGN itself is 1.
+  unitsPerNaira Float
+
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
 }

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { colorSwatch, koboToNaira } from "@/lib/format";
+import { colorSwatch } from "@/lib/format";
+import Money from "@/app/_components/money";
 
 export type Facet = { value: string; count: number };
 
@@ -203,7 +204,7 @@ function PriceSlider({
   return (
     <div>
       <p className="text-sm text-muted">
-        Up to {koboToNaira(draft)}
+        Up to <Money kobo={draft} />
       </p>
       <input
         type="range"

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import AuthSplit from "@/app/_components/auth-split";
 import AuthField from "@/app/_components/auth-field";
-import AuthButton from "@/app/_components/auth-button";
-import NotWired from "@/app/_components/not-wired";
+import AuthForm from "@/app/_components/auth-form";
+import { requestPasswordReset } from "@/app/_actions/auth";
 
 export const metadata: Metadata = {
   title: "Forgot password",
@@ -29,18 +29,16 @@ export default function ForgotPasswordPage() {
         reset your password.
       </p>
 
-      <AuthField
-        label="Email Address"
-        type="email"
-        placeholder="you@example.com"
-        autoComplete="email"
-      />
-
-      <AuthButton label="Send OTP" href="/verify-otp" />
-
-      <NotWired>
-        Shell only. No code is sent; the button just opens the next screen.
-      </NotWired>
+      <AuthForm action={requestPasswordReset} label="Send OTP">
+        <AuthField
+          label="Email Address"
+          name="email"
+          type="email"
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+        />
+      </AuthForm>
     </AuthSplit>
   );
 }

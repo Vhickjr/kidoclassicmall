@@ -3,8 +3,9 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { readSessionId } from "@/lib/cart";
-import { imageList, koboToNaira } from "@/lib/format";
+import { imageList } from "@/lib/format";
 import { removeWishlistItem } from "@/app/_actions/account";
+import Money from "@/app/_components/money";
 
 export const metadata: Metadata = { title: "My Wishlists" };
 
@@ -88,7 +89,7 @@ export default async function WishlistPage() {
               )}
               <p className="mt-0.5 text-sm text-muted">{item.product.name}</p>
               {lowest !== null && (
-                <p className="mt-1 text-sm font-medium">{koboToNaira(lowest)}</p>
+                <p className="mt-1 text-sm font-medium"><Money kobo={lowest} /></p>
               )}
             </li>
           );

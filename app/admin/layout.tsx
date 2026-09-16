@@ -5,6 +5,7 @@ import {
   Package,
   Percent,
   ReceiptText,
+  Coins,
   Star,
   Store,
   Tags,
@@ -20,6 +21,7 @@ const NAV = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/discounts", label: "Discounts", icon: Percent },
+  { href: "/admin/currencies", label: "Currencies", icon: Coins },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/staff", label: "Staff & roles", icon: Users },
 ];

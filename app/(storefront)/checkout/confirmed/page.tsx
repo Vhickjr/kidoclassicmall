@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { readSessionId } from "@/lib/cart";
-import { koboToNaira } from "@/lib/format";
+import Money from "@/app/_components/money";
 
 export const metadata: Metadata = { title: "Order confirmed" };
 
@@ -50,7 +50,7 @@ export default async function OrderConfirmedPage({
         </div>
         <div className="mt-3 flex justify-between">
           <dt className="text-muted">Total</dt>
-          <dd className="font-semibold">{koboToNaira(order.totalKobo)}</dd>
+          <dd className="font-semibold"><Money kobo={order.totalKobo} /></dd>
         </div>
         <div className="mt-3 flex justify-between">
           <dt className="text-muted">Status</dt>
@@ -58,10 +58,11 @@ export default async function OrderConfirmedPage({
         </div>
       </dl>
 
-      <p className="mt-4 rounded border border-dashed border-line px-3 py-2 text-xs text-muted">
-        Payment is not connected yet, so this order is unpaid and no stock has
-        moved.
-      </p>
+      {order.status === "PENDING" && (
+        <p className="mt-4 rounded border border-dashed border-line px-3 py-2 text-xs text-muted">
+          This order is not paid yet. Stock moves only once payment confirms.
+        </p>
+      )}
 
       <div className="mt-8 space-y-3">
         <Link

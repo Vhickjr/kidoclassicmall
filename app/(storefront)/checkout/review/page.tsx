@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { PAYMENT_METHODS, loadCheckout } from "@/lib/checkout";
-import { imageList, koboToNaira } from "@/lib/format";
+import { imageList } from "@/lib/format";
 import { placeOrder } from "@/app/_actions/checkout";
 import CheckoutSteps from "@/app/_components/checkout-steps";
 import OrderSummary from "@/app/_components/order-summary";
+import Money from "@/app/_components/money";
 
 export const metadata: Metadata = { title: "Review Your Order" };
 
@@ -63,7 +64,7 @@ export default async function ReviewOrderPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">{line.variant.product.name}</p>
                     <p className="mt-1 text-sm">
-                      {koboToNaira(line.variant.priceKobo)}
+                      <Money kobo={line.variant.priceKobo} />
                     </p>
                     <p className="mt-1 text-sm text-muted">
                       Size: {line.variant.size}
@@ -72,7 +73,7 @@ export default async function ReviewOrderPage() {
                     </p>
                   </div>
                   <p className="font-semibold">
-                    {koboToNaira(line.variant.priceKobo * line.quantity)}
+                    <Money kobo={line.variant.priceKobo * line.quantity} />
                   </p>
                 </li>
               );

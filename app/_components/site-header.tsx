@@ -3,6 +3,8 @@ import { ChevronDown, Heart, Search } from "lucide-react";
 import Minicart from "@/app/_components/minicart";
 import Logo from "@/app/_components/logo";
 import { getSessionUser, isStaff } from "@/lib/auth";
+import { activeCurrency, listCurrencies } from "@/lib/currency-server";
+import CurrencySwitcher from "@/app/_components/currency-switcher";
 
 // Copied verbatim from the mockup, on request. None of it reflects the real
 // catalogue yet — Kidoclassic sells women's denim, jeans and footwear — and
@@ -72,7 +74,11 @@ const MEGA_MENU: { heading: string; items: string[] }[][] = [
 ];
 
 export default async function SiteHeader() {
-  const user = await getSessionUser();
+  const [user, currencies, currency] = await Promise.all([
+    getSessionUser(),
+    listCurrencies(),
+    activeCurrency(),
+  ]);
 
   return (
     <header className="relative border-b-2 border-brand/30 bg-surface">
@@ -91,7 +97,12 @@ export default async function SiteHeader() {
               <ChevronDown aria-hidden className="size-4" />
             </Link>
 
-            <div className="invisible absolute inset-x-0 top-full z-20 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            {/* `-mt-6 pt-6` pulls the hover area up over the header padding
+                between the Shop link and the panel, then pads the contents back
+                down so nothing moves. Without that bridge the cursor crosses a
+                dead strip on the way down and the menu shuts. The close is
+                delayed slightly so a diagonal path to the far column survives. */}
+            <div className="invisible absolute inset-x-0 top-full z-20 -mt-6 pt-6 opacity-0 transition-opacity delay-200 group-hover:visible group-hover:opacity-100 group-hover:delay-0 group-focus-within:visible group-focus-within:opacity-100 group-focus-within:delay-0">
               <div className="mx-auto grid w-full max-w-5xl grid-cols-4 gap-8 border border-line bg-surface p-8 shadow-xl">
                 {MEGA_MENU.map((column, index) => (
                   <div key={index} className="space-y-7">
@@ -129,6 +140,8 @@ export default async function SiteHeader() {
               />
             </label>
           </form>
+
+          <CurrencySwitcher currencies={currencies} current={currency.code} />
 
           <Link href="/account/wishlist" aria-label="Wishlist">
             <Heart aria-hidden className="size-5 text-muted hover:text-foreground" />

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { readSessionId } from "@/lib/cart";
-import { koboToNaira } from "@/lib/format";
+import Money from "@/app/_components/money";
 
 export const metadata: Metadata = { title: "My Orders" };
 
@@ -76,7 +76,7 @@ export default async function MyOrdersPage() {
                     {order.items.length === 1 ? "item" : "items"}
                   </p>
                 </div>
-                <p className="font-semibold">{koboToNaira(order.totalKobo)}</p>
+                <p className="font-semibold"><Money kobo={order.totalKobo} /></p>
               </div>
 
               <ul className="mt-4 space-y-2">
@@ -88,7 +88,7 @@ export default async function MyOrdersPage() {
                       {item.color ? ` · ${item.color}` : ""}
                       {" · "}Qty: {item.quantity}
                       {" · "}
-                      {koboToNaira(item.priceKobo)}
+                      <Money kobo={item.priceKobo} />
                     </span>
                   </li>
                 ))}

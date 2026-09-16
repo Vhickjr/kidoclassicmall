@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { nairaToKobo, slugify } from "@/lib/format";
+import { imageList, nairaToKobo, slugify } from "@/lib/format";
+import { destroyImages } from "@/lib/cloudinary";
 
 /** Every action here re-checks the gate. Server actions accept direct POSTs, so
  *  rendering the admin behind a check is not by itself protection. */
@@ -66,6 +67,27 @@ export async function updateProductDetails(formData: FormData) {
   const name = text(formData, "name");
   if (!name) return;
 
+  // The uploader submits one URL per line; an absent field means "leave as is".
+  const rawImages = formData.get("images");
+  const images =
+    rawImages === null
+      ? undefined
+      : String(rawImages)
+          .split(/[\n,]/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+  // Work out what the edit removed before overwriting the row, so those files
+  // can be deleted from Cloudinary rather than lingering on the free tier.
+  let orphaned: string[] = [];
+  if (images !== undefined) {
+    const before = await prisma.product.findUnique({
+      where: { id },
+      select: { images: true },
+    });
+    orphaned = imageList(before?.images).filter((url) => !images.includes(url));
+  }
+
   await prisma.product.update({
     where: { id },
     data: {
@@ -73,8 +95,13 @@ export async function updateProductDetails(formData: FormData) {
       brand: text(formData, "brand") || null,
       description: text(formData, "description") || null,
       categoryId: text(formData, "categoryId") || null,
+      ...(images === undefined ? {} : { images }),
     },
   });
+
+  // After the save: if this fails the storefront is still correct, it just
+  // leaves a file behind.
+  await destroyImages(orphaned);
 
   refresh();
 }
@@ -117,9 +144,14 @@ export async function createCategory(formData: FormData) {
 export async function deleteCategory(formData: FormData) {
   const prisma = await guard();
 
+  const id = text(formData, "categoryId");
+  const category = await prisma.category.findUnique({ where: { id } });
+
   // Products point at categories with onDelete: SetNull, so this un-files them
   // rather than deleting stock.
-  await prisma.category.delete({ where: { id: text(formData, "categoryId") } });
+  await prisma.category.delete({ where: { id } });
+
+  if (category?.imageUrl) await destroyImages([category.imageUrl]);
   refresh();
 }
 
@@ -221,5 +253,50 @@ export async function setOrderStatus(formData: FormData) {
     await tx.order.update({ where: { id: orderId }, data: { status } });
   });
 
+  refresh();
+}
+
+export async function upsertCurrency(formData: FormData) {
+  const prisma = await guard();
+
+  const code = text(formData, "code").toUpperCase();
+  const rate = Number(formData.get("unitsPerNaira"));
+
+  if (!/^[A-Z]{3}$/.test(code)) return;
+  if (!Number.isFinite(rate) || rate <= 0) return;
+
+  const data = {
+    symbol: text(formData, "symbol") || code,
+    name: text(formData, "name") || code,
+    unitsPerNaira: rate,
+  };
+
+  await prisma.currency.upsert({
+    where: { code },
+    create: { code, ...data, active: true },
+    update: data,
+  });
+
+  refresh();
+}
+
+export async function toggleCurrency(formData: FormData) {
+  const prisma = await guard();
+  const id = text(formData, "currencyId");
+
+  const row = await prisma.currency.findUnique({ where: { id } });
+  if (!row) return;
+
+  await prisma.currency.update({
+    where: { id },
+    data: { active: !row.active },
+  });
+
+  refresh();
+}
+
+export async function deleteCurrency(formData: FormData) {
+  const prisma = await guard();
+  await prisma.currency.delete({ where: { id: text(formData, "currencyId") } });
   refresh();
 }

@@ -1,126 +1,57 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { confirmAndFulfilOrder } from "@/lib/alatpay";
 import { getPrisma } from "@/lib/prisma";
 
 /**
- * ALAT Pay payment confirmation.
+ * ALAT Pay's callback URL, set in the merchant portal.
  *
- * Three things here are deliberate, and all three come from the checkout rules
- * in SETUP.md:
+ * ALAT Pay publishes no signature scheme for this callback, so the body is
+ * treated as an unauthenticated hint: it tells us which transaction to look at,
+ * and nothing more. The decision to mark an order paid comes from asking ALAT
+ * Pay over our own authenticated connection.
  *
- * 1. Only a signed webhook may mark an order paid. The browser redirect back
- *    from a payment page can be forged, so it must never be trusted for this.
- * 2. Stock moves here and nowhere else, inside one transaction, guarded so two
- *    buyers cannot both take the last size 38.
- * 3. Confirming twice is harmless, because webhooks retry.
- *
- * STILL TO CONFIRM against ALAT Pay's documentation: the signature header name,
- * the digest algorithm, and where the order id and reference sit in the payload.
- * The three constants below are the placeholders to correct.
+ * That is stronger than signature checking would be, because a forged body can
+ * at worst make us re-verify a transaction that is not ours and get refused.
  */
-const SIGNATURE_HEADER = "x-alatpay-signature";
-const SIGNATURE_ALGORITHM = "sha512";
-const SUCCESS_STATUS = "successful";
-
-function signatureMatches(raw: string, provided: string, secret: string) {
-  const expected = createHmac(SIGNATURE_ALGORITHM, secret).update(raw).digest("hex");
-  const a = Buffer.from(expected);
-  const b = Buffer.from(provided);
-
-  // Length must match before timingSafeEqual, which throws on a mismatch.
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 export async function POST(request: Request) {
-  const secret = process.env.ALATPAY_WEBHOOK_SECRET;
+  const payload = await request.json().catch(() => null);
 
-  // Fail closed. Without a secret we cannot tell a real callback from a forged
-  // one, and accepting a forged one would hand out free orders.
-  if (!secret) {
-    return NextResponse.json(
-      { error: "Payment webhook is not configured." },
-      { status: 503 }
-    );
-  }
-
-  const raw = await request.text();
-  const provided = request.headers.get(SIGNATURE_HEADER) ?? "";
-
-  if (!signatureMatches(raw, provided, secret)) {
-    return NextResponse.json({ error: "Bad signature." }, { status: 401 });
-  }
-
-  let payload: {
-    status?: string;
-    reference?: string;
-    data?: { reference?: string; status?: string; metadata?: { orderId?: string } };
-  };
-
-  try {
-    payload = JSON.parse(raw);
-  } catch {
+  if (!payload) {
     return NextResponse.json({ error: "Malformed payload." }, { status: 400 });
   }
 
-  const orderId = payload.data?.metadata?.orderId;
-  const reference = payload.data?.reference ?? payload.reference;
-  const status = payload.data?.status ?? payload.status;
+  const data = payload.data ?? payload;
+  const transactionId: string | undefined =
+    data.transactionId ?? data.id ?? payload.transactionId;
+  const orderIdFromPayload: string | undefined = data.orderId ?? payload.orderId;
 
-  if (!orderId || !reference) {
-    return NextResponse.json({ error: "Missing order reference." }, { status: 400 });
+  if (!transactionId) {
+    return NextResponse.json({ received: true, note: "No transaction id." });
   }
 
-  if (status !== SUCCESS_STATUS) {
-    // Nothing to do for a failed attempt; the order stays PENDING.
+  // Prefer our own record: the order whose reference already matches, or the
+  // order named in the payload. Either way the amount is re-checked downstream.
+  const prisma = getPrisma();
+  const order =
+    (orderIdFromPayload
+      ? await prisma.order.findUnique({ where: { id: orderIdFromPayload } })
+      : null) ??
+    (await prisma.order.findFirst({ where: { paymentRef: transactionId } }));
+
+  if (!order) {
+    // Acknowledge so ALAT Pay stops retrying something we cannot match.
+    console.warn("alatpay webhook for unknown order", transactionId);
     return NextResponse.json({ received: true });
   }
 
-  try {
-    await confirmPaidOrder(orderId, reference);
-  } catch (error) {
-    console.error("payment confirmation failed", orderId, error);
-    // A non-2xx tells ALAT Pay to retry, which is what we want if our own
-    // database was briefly unavailable.
-    return NextResponse.json({ error: "Could not confirm." }, { status: 500 });
+  const result = await confirmAndFulfilOrder(order.id, transactionId);
+
+  if (!result.ok) {
+    // A non-2xx asks ALAT Pay to retry, which is what we want if our database
+    // or their API was briefly unavailable.
+    console.error("alatpay webhook could not settle", order.id, result.error);
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
-}
-
-async function confirmPaidOrder(orderId: string, reference: string) {
-  const prisma = getPrisma();
-
-  await prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: { items: true },
-    });
-
-    if (!order) throw new Error(`Unknown order ${orderId}`);
-
-    // Idempotency: a retried webhook must not decrement stock a second time.
-    if (order.status !== "PENDING") return;
-
-    for (const item of order.items) {
-      // The stock guard lives in the WHERE clause so the check and the
-      // decrement are one atomic statement. A plain read-then-write here would
-      // let two simultaneous confirmations both pass the check.
-      const taken = await tx.productVariant.updateMany({
-        where: { id: item.variantId, stock: { gte: item.quantity } },
-        data: { stock: { decrement: item.quantity } },
-      });
-
-      if (taken.count === 0) {
-        // Rolls back every decrement already made in this transaction.
-        throw new Error(
-          `Out of stock for order ${orderId}: ${item.productName} ${item.size}`
-        );
-      }
-    }
-
-    await tx.order.update({
-      where: { id: orderId },
-      data: { status: "PAID", paymentRef: reference, paidAt: new Date() },
-    });
-  });
 }

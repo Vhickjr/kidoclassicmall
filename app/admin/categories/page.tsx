@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { createCategory, deleteCategory } from "@/app/_actions/admin";
+import ImageUploader from "@/app/_components/image-uploader";
 
 export const metadata: Metadata = { title: "Categories" };
 
@@ -31,14 +32,12 @@ export default async function AdminCategoriesPage() {
             className="mt-1.5 w-full border border-line px-4 py-2.5 text-sm outline-none focus:border-brand"
           />
         </label>
-        <label className="min-w-40 flex-1">
-          <span className="text-xs text-muted">Image URL</span>
-          <input
-            name="imageUrl"
-            placeholder="https://…"
-            className="mt-1.5 w-full border border-line px-4 py-2.5 text-sm outline-none focus:border-brand"
-          />
-        </label>
+        <div className="min-w-40 flex-1">
+          <span className="text-xs text-muted">Image</span>
+          <div className="mt-1.5">
+            <ImageUploader name="imageUrl" multiple={false} />
+          </div>
+        </div>
         <button
           type="submit"
           className="self-end bg-brand px-6 py-2.5 text-sm text-white"

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
@@ -158,6 +159,9 @@ async function main() {
       variants: variants(LETTER_STOCK, ["Black"], 3200000, null),
     },
   ];
+
+  await prisma.cartItem.deleteMany();
+  await prisma.orderItem.deleteMany();
 
   for (const { variants: rows, categorySlug, ...product } of products) {
     await prisma.product.deleteMany({ where: { slug: product.slug } });

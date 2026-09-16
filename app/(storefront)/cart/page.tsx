@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { cartSubtotalKobo, readCart } from "@/lib/cart";
-import { imageList, koboToNaira } from "@/lib/format";
+import { imageList } from "@/lib/format";
 import { removeCartItem, setCartItemQuantity } from "@/app/_actions/cart";
 import ValueProps from "@/app/_components/value-props";
+import Money from "@/app/_components/money";
 
 export const metadata: Metadata = {
   title: "Cart",
@@ -87,7 +88,7 @@ export default async function CartPage() {
                       </div>
                     </div>
 
-                    <p className="text-sm">{koboToNaira(line.variant.priceKobo)}</p>
+                    <p className="text-sm"><Money kobo={line.variant.priceKobo} /></p>
 
                     <div className="flex items-center border border-line">
                       <QuantityButton
@@ -113,7 +114,7 @@ export default async function CartPage() {
                     </div>
 
                     <p className="text-sm font-semibold md:text-right">
-                      {koboToNaira(line.variant.priceKobo * line.quantity)}
+                      <Money kobo={line.variant.priceKobo * line.quantity} />
                     </p>
                   </li>
                 );
@@ -124,7 +125,7 @@ export default async function CartPage() {
           <aside className="h-fit border border-line p-6">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">Subtotal</span>
-              <span className="text-sm font-semibold">{koboToNaira(subtotal)}</span>
+              <span className="text-sm font-semibold"><Money kobo={subtotal} /></span>
             </div>
 
             {/* The mockup also shows a discount code box and a delivery charge.
@@ -132,7 +133,7 @@ export default async function CartPage() {
                 total is the subtotal until then. */}
             <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
               <span className="font-semibold">Grand Total</span>
-              <span className="font-semibold">{koboToNaira(subtotal)}</span>
+              <span className="font-semibold"><Money kobo={subtotal} /></span>
             </div>
 
             <Link

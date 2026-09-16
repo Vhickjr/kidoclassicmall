@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { nairaToKobo } from "@/lib/format";
+import ImageUploader from "@/app/_components/image-uploader";
 
 // The whole point of this screen: pick sizes by tapping them, then fill a grid.
 // No attributes, no terms, no generate step.
@@ -173,17 +174,26 @@ export default function NewProductPage() {
         </div>
 
         <div>
-          <label htmlFor="images" className="block text-sm font-medium">
-            Image URLs
-          </label>
-          <textarea
-            id="images"
-            value={imagesRaw}
-            onChange={(e) => setImagesRaw(e.target.value)}
-            rows={2}
-            placeholder="One per line. The first one is used on the product card."
-            className="mt-1 w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
-          />
+          <label className="block text-sm font-medium">Photos</label>
+          <div className="mt-2">
+            <ImageUploader
+              initial={imagesRaw.split("\n").filter(Boolean)}
+              onChange={(urls) => setImagesRaw(urls.join("\n"))}
+            />
+          </div>
+
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm text-muted">
+              Or paste image URLs
+            </summary>
+            <textarea
+              value={imagesRaw}
+              onChange={(e) => setImagesRaw(e.target.value)}
+              rows={2}
+              placeholder="One per line. The first one is used on the product card."
+              className="mt-2 w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
+            />
+          </details>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
-import { koboToNaira } from "@/lib/format";
 import type { Totals } from "@/lib/checkout";
 import { applyDiscount } from "@/app/_actions/checkout";
+import Money from "@/app/_components/money";
 
 export default function OrderSummary({
   totals,
@@ -19,7 +19,7 @@ export default function OrderSummary({
     <aside className="h-fit border border-line p-6">
       <div className="flex items-center justify-between">
         <span className="font-semibold">Subtotal</span>
-        <span className="font-semibold">{koboToNaira(totals.subtotalKobo)}</span>
+        <span className="font-semibold"><Money kobo={totals.subtotalKobo} /></span>
       </div>
 
       <form action={applyDiscount} className="mt-6">
@@ -50,7 +50,7 @@ export default function OrderSummary({
         <div className="mt-5 flex items-center justify-between text-sm">
           <span>Discount {appliedCode ? `(${appliedCode})` : ""}</span>
           <span className="text-green-700">
-            &minus;{koboToNaira(totals.discountKobo)}
+            &minus;<Money kobo={totals.discountKobo} />
           </span>
         </div>
       )}
@@ -58,13 +58,17 @@ export default function OrderSummary({
       <div className="mt-5 flex items-center justify-between text-sm">
         <span>Delivery Charge</span>
         <span>
-          {totals.deliveryKobo === 0 ? "Free" : koboToNaira(totals.deliveryKobo)}
+          {totals.deliveryKobo === 0 ? (
+            "Free"
+          ) : (
+            <Money kobo={totals.deliveryKobo} />
+          )}
         </span>
       </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-line pt-5">
         <span className="font-semibold">Grand Total</span>
-        <span className="font-semibold">{koboToNaira(totals.totalKobo)}</span>
+        <span className="font-semibold"><Money kobo={totals.totalKobo} /></span>
       </div>
 
       {children}

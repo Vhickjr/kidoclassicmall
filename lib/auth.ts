@@ -1,4 +1,4 @@
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { getPrisma } from "@/lib/prisma";
@@ -74,6 +74,7 @@ export type SessionUser = {
   lastName: string | null;
   phone: string | null;
   role: "CUSTOMER" | "ADMIN" | "SUPER_ADMIN";
+  emailVerified: boolean;
 };
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -99,6 +100,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     lastName: user.lastName,
     phone: user.phone,
     role: user.role,
+    emailVerified: user.emailVerified,
   };
 }
 
@@ -141,4 +143,122 @@ export async function requireSuperAdmin(): Promise<boolean> {
 
   const jar = await cookies();
   return jar.get("kido_admin")?.value === secret;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Password-reset & email-verification helpers                       */
+/* ------------------------------------------------------------------ */
+
+function getVerificationSecret(): string {
+  return process.env.ADMIN_SECRET || "dev-verification-key";
+}
+
+/**
+ * Generate a 5-digit numeric reset code and persist a PasswordResetToken row.
+ * Any previous unused tokens for the same user are invalidated first.
+ */
+export async function createPasswordResetToken(
+  userId: string
+): Promise<string> {
+  const prisma = getPrisma();
+
+  // Invalidate any outstanding (unused) tokens for this user
+  await prisma.passwordResetToken.deleteMany({
+    where: { userId, usedAt: null },
+  });
+
+  const token = randomBytes(32).toString("hex");
+  const code = String(Math.floor(Math.random() * 100_000)).padStart(5, "0");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  await prisma.passwordResetToken.create({
+    data: { token, code, userId, expiresAt },
+  });
+
+  return code;
+}
+
+/**
+ * Verify a password-reset code submitted by the user.
+ * Returns the userId + backing token on success, or null.
+ */
+export async function verifyPasswordResetCode(
+  email: string,
+  code: string
+): Promise<{ userId: string; token: string } | null> {
+  const prisma = getPrisma();
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return null;
+
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      userId: user.id,
+      code,
+      expiresAt: { gt: new Date() },
+      usedAt: null,
+    },
+  });
+  if (!resetToken) return null;
+
+  // Mark as used
+  await prisma.passwordResetToken.update({
+    where: { id: resetToken.id },
+    data: { usedAt: new Date() },
+  });
+
+  return { userId: user.id, token: resetToken.token };
+}
+
+/**
+ * Generate an email-verification token (HMAC-based) and persist it
+ * as a PasswordResetToken row with code='EMAIL_VERIFY' and 24-hour expiry.
+ */
+export async function generateEmailVerificationToken(
+  userId: string
+): Promise<string> {
+  const prisma = getPrisma();
+
+  const token = createHmac("sha256", getVerificationSecret())
+    .update(userId + ":" + Date.now())
+    .digest("hex");
+
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  await prisma.passwordResetToken.create({
+    data: { token, code: "EMAIL_VERIFY", userId, expiresAt },
+  });
+
+  return token;
+}
+
+/**
+ * Verify an email-verification token.
+ * On success marks the token as used and sets user.emailVerified = true.
+ */
+export async function verifyEmailToken(token: string): Promise<boolean> {
+  const prisma = getPrisma();
+
+  const record = await prisma.passwordResetToken.findFirst({
+    where: {
+      token,
+      code: "EMAIL_VERIFY",
+      expiresAt: { gt: new Date() },
+      usedAt: null,
+    },
+  });
+  if (!record) return false;
+
+  await prisma.$transaction([
+    prisma.passwordResetToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    }),
+    prisma.user.update({
+      where: { id: record.userId },
+      data: { emailVerified: true },
+    }),
+  ]);
+
+  return true;
 }

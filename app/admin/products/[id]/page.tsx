@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { compareSizes } from "@/lib/format";
+import { compareSizes, imageList } from "@/lib/format";
+import ImageUploader from "@/app/_components/image-uploader";
 import { updateProductDetails, updateVariant } from "@/app/_actions/admin";
 
 export const metadata: Metadata = { title: "Edit product" };
@@ -85,6 +86,13 @@ export default async function EditProductPage({
             ))}
           </select>
         </label>
+
+        <div className="mt-5">
+          <span className="text-xs text-muted">Photos</span>
+          <div className="mt-1.5">
+            <ImageUploader name="images" initial={imageList(product.images)} />
+          </div>
+        </div>
 
         <label className="mt-5 block">
           <span className="text-xs text-muted">Description</span>
