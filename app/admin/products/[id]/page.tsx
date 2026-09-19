@@ -5,7 +5,13 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { compareSizes, imageList } from "@/lib/format";
 import ImageUploader from "@/app/_components/image-uploader";
-import { updateProductDetails, updateVariant } from "@/app/_actions/admin";
+import { Trash2 } from "lucide-react";
+import {
+  addVariant,
+  deleteVariant,
+  updateProductDetails,
+  updateVariant,
+} from "@/app/_actions/admin";
 
 export const metadata: Metadata = { title: "Edit product" };
 
@@ -94,6 +100,21 @@ export default async function EditProductPage({
           </div>
         </div>
 
+        <div className="mt-5">
+          <span className="text-xs text-muted">Showcase video (optional)</span>
+          <p className="mt-1 text-xs text-muted">
+            Plays alongside the photos on the product page.
+          </p>
+          <div className="mt-1.5">
+            <ImageUploader
+              name="videoUrl"
+              accept="video/*"
+              multiple={false}
+              initial={product.videoUrl ? [product.videoUrl] : []}
+            />
+          </div>
+        </div>
+
         <label className="mt-5 block">
           <span className="text-xs text-muted">Description</span>
           <textarea
@@ -112,69 +133,184 @@ export default async function EditProductPage({
         </button>
       </form>
 
-      <h2 className="mt-12 font-semibold">Sizes, price and stock</h2>
+      <h2 className="mt-12 font-semibold">Sizes, colours, price and stock</h2>
       <p className="mt-1 text-sm text-muted">
-        Prices are entered in naira and stored as kobo.
+        One row per size/colour combination. Prices are entered in naira and
+        stored as kobo. Leave colour blank for a product that does not vary by
+        colour.
       </p>
 
-      <ul className="mt-4 divide-y divide-line border-y border-line">
-        {variants.map((variant) => (
-          <li key={variant.id} className="py-4">
-            <form
-              action={updateVariant}
-              className="flex flex-wrap items-end gap-4"
-            >
-              <input type="hidden" name="variantId" value={variant.id} />
-
-              <div className="min-w-32">
-                <p className="text-sm font-semibold">{variant.size}</p>
-                <p className="text-sm text-muted">
-                  {variant.color ?? "No colour"}
-                </p>
-              </div>
-
-              <label className="block">
-                <span className="text-xs text-muted">Price (₦)</span>
-                <input
-                  name="price"
-                  defaultValue={naira(variant.priceKobo)}
-                  className="mt-1 w-28 border border-line px-3 py-2 text-sm"
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-xs text-muted">Was (₦)</span>
-                <input
-                  name="compareAt"
-                  defaultValue={
-                    variant.compareAtKobo ? naira(variant.compareAtKobo) : ""
-                  }
-                  placeholder="optional"
-                  className="mt-1 w-28 border border-line px-3 py-2 text-sm"
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-xs text-muted">Stock</span>
-                <input
-                  name="stock"
-                  type="number"
-                  min={0}
-                  defaultValue={variant.stock}
-                  className="mt-1 w-24 border border-line px-3 py-2 text-sm"
-                />
-              </label>
-
-              <button
-                type="submit"
-                className="bg-brand px-5 py-2.5 text-sm text-white"
+      {variants.length > 0 && (
+        <ul className="mt-4 divide-y divide-line border-y border-line">
+          {variants.map((variant) => (
+            <li key={variant.id} className="py-4">
+              <form
+                action={updateVariant}
+                className="flex flex-wrap items-end gap-3"
               >
-                Save
-              </button>
-            </form>
-          </li>
-        ))}
-      </ul>
+                <input type="hidden" name="variantId" value={variant.id} />
+
+                <label className="block">
+                  <span className="text-xs text-muted">Size</span>
+                  <input
+                    name="size"
+                    required
+                    defaultValue={variant.size}
+                    className="mt-1 w-20 border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-xs text-muted">Colour</span>
+                  <input
+                    name="color"
+                    defaultValue={variant.color ?? ""}
+                    placeholder="optional"
+                    className="mt-1 w-28 border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-xs text-muted">Custom Options (JSON)</span>
+                  <input
+                    name="customOptionsJson"
+                    defaultValue={
+                      variant.customOptions
+                        ? JSON.stringify(variant.customOptions)
+                        : ""
+                    }
+                    placeholder='{"Material":"Silk"}'
+                    className="mt-1 w-44 border border-line px-3 py-2 text-xs font-mono"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-xs text-muted">Price (₦)</span>
+                  <input
+                    name="price"
+                    defaultValue={naira(variant.priceKobo)}
+                    className="mt-1 w-28 border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-xs text-muted">Was (₦)</span>
+                  <input
+                    name="compareAt"
+                    defaultValue={
+                      variant.compareAtKobo ? naira(variant.compareAtKobo) : ""
+                    }
+                    placeholder="optional"
+                    className="mt-1 w-28 border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-xs text-muted">Stock</span>
+                  <input
+                    name="stock"
+                    type="number"
+                    min={0}
+                    defaultValue={variant.stock}
+                    className="mt-1 w-24 border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  className="bg-brand px-5 py-2.5 text-sm text-white"
+                >
+                  Save
+                </button>
+              </form>
+
+              <form action={deleteVariant} className="mt-2">
+                <input type="hidden" name="variantId" value={variant.id} />
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
+                >
+                  <Trash2 aria-hidden className="size-3.5" />
+                  Remove this size/colour
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3 className="mt-8 text-sm font-semibold">Add a size or colour</h3>
+      <form
+        action={addVariant}
+        className="mt-3 flex flex-wrap items-end gap-3 border border-line p-4"
+      >
+        <input type="hidden" name="productId" value={product.id} />
+
+        <label className="block">
+          <span className="text-xs text-muted">Size</span>
+          <input
+            name="size"
+            required
+            placeholder="M"
+            className="mt-1 w-20 border border-line px-3 py-2 text-sm"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-xs text-muted">Colour</span>
+          <input
+            name="color"
+            placeholder="optional"
+            className="mt-1 w-28 border border-line px-3 py-2 text-sm"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-xs text-muted">Custom Options (JSON)</span>
+          <input
+            name="customOptionsJson"
+            placeholder='{"Material":"Silk"}'
+            className="mt-1 w-44 border border-line px-3 py-2 text-xs font-mono"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-xs text-muted">Price (₦)</span>
+          <input
+            name="price"
+            required
+            placeholder="0.00"
+            className="mt-1 w-28 border border-line px-3 py-2 text-sm"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-xs text-muted">Was (₦)</span>
+          <input
+            name="compareAt"
+            placeholder="optional"
+            className="mt-1 w-28 border border-line px-3 py-2 text-sm"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-xs text-muted">Stock</span>
+          <input
+            name="stock"
+            type="number"
+            min={0}
+            defaultValue={0}
+            className="mt-1 w-24 border border-line px-3 py-2 text-sm"
+          />
+        </label>
+
+        <button
+          type="submit"
+          className="bg-brand px-5 py-2.5 text-sm text-white"
+        >
+          Add
+        </button>
+      </form>
     </div>
   );
 }

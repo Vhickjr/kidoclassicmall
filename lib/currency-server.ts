@@ -6,8 +6,12 @@ import {
   CURRENCY_COOKIE,
   type DisplayCurrency,
 } from "@/lib/currency";
+import { refreshRatesIfNeeded } from "@/lib/rates";
 
 export async function listCurrencies(): Promise<DisplayCurrency[]> {
+  // Automatically refresh live rates if stale (>1 hour old or missing)
+  await refreshRatesIfNeeded();
+
   const rows = await getPrisma().currency.findMany({
     where: { active: true },
     orderBy: { code: "asc" },
@@ -30,6 +34,9 @@ export async function activeCurrency(): Promise<DisplayCurrency> {
   const code = jar.get(CURRENCY_COOKIE)?.value;
 
   if (!code || code === BASE_CURRENCY.code) return BASE_CURRENCY;
+
+  // Automatically refresh live rates if stale (>1 hour old or missing)
+  await refreshRatesIfNeeded();
 
   const row = await getPrisma().currency.findUnique({ where: { code } });
 

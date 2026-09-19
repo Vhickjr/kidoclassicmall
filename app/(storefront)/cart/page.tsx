@@ -6,6 +6,7 @@ import { imageList } from "@/lib/format";
 import { removeCartItem, setCartItemQuantity } from "@/app/_actions/cart";
 import ValueProps from "@/app/_components/value-props";
 import Money from "@/app/_components/money";
+import { formatVariantLabel } from "@/lib/variant";
 
 export const metadata: Metadata = {
   title: "Cart",
@@ -71,8 +72,7 @@ export default async function CartPage() {
                           {line.variant.product.name}
                         </Link>
                         <p className="mt-1 text-sm text-muted">
-                          Size: {line.variant.size}
-                          {line.variant.color ? ` · ${line.variant.color}` : ""}
+                          {formatVariantLabel(line.variant)}
                         </p>
 
                         <form action={removeCartItem} className="mt-2">

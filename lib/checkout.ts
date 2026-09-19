@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import { getPrisma } from "@/lib/prisma";
 import { cartSubtotalKobo, readCart, readSessionId } from "@/lib/cart";
+import { storeSettings } from "@/lib/settings-store";
 
 export const CHECKOUT_COOKIE = "kido_checkout";
 
-/** Placeholder logistics pricing. The threshold matches the "free shipping over
- *  ₦150,000" line in the value-props row, so the two cannot drift apart. */
+/** Fallbacks only. The live figures come from StoreSettings, editable in the
+ *  admin — see DEFAULT_STORE_SETTINGS, which these mirror. */
 export const DELIVERY_FLAT_KOBO = 250_000;
 export const FREE_DELIVERY_OVER_KOBO = 15_000_000;
 
@@ -47,14 +48,21 @@ export type Totals = {
 
 /** The single place any money figure is derived. Pages display these; the order
  *  writer calls the same function, so what a customer sees is what gets stored. */
-export function totalsFor(subtotalKobo: number, discountKobo: number): Totals {
+export function totalsFor(
+  subtotalKobo: number,
+  discountKobo: number,
+  delivery: { deliveryFlatKobo: number; freeDeliveryOverKobo: number } = {
+    deliveryFlatKobo: DELIVERY_FLAT_KOBO,
+    freeDeliveryOverKobo: FREE_DELIVERY_OVER_KOBO,
+  }
+): Totals {
   const capped = Math.min(Math.max(0, discountKobo), subtotalKobo);
   const discounted = subtotalKobo - capped;
 
   const deliveryKobo =
-    discounted === 0 || discounted >= FREE_DELIVERY_OVER_KOBO
+    discounted === 0 || discounted >= delivery.freeDeliveryOverKobo
       ? 0
-      : DELIVERY_FLAT_KOBO;
+      : delivery.deliveryFlatKobo;
 
   return {
     subtotalKobo,
@@ -95,12 +103,13 @@ export async function loadCheckout() {
   const subtotalKobo = cartSubtotalKobo(cart);
   const state = await readCheckoutState();
   const discount = await discountFor(state.discountCode, subtotalKobo);
+  const delivery = await storeSettings();
 
   return {
     cart,
     state,
     discount,
-    totals: totalsFor(subtotalKobo, discount.amountKobo),
+    totals: totalsFor(subtotalKobo, discount.amountKobo, delivery),
   };
 }
 

@@ -7,6 +7,9 @@ import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { CART_COOKIE, cartSubtotalKobo, readCart, readSessionId } from "@/lib/cart";
 import { koboToNaira } from "@/lib/format";
+import { storeSettings } from "@/lib/settings-store";
+import { after } from "next/server";
+import { sendOrderReceipt } from "@/lib/mail";
 import {
   CHECKOUT_COOKIE,
   type CheckoutState,
@@ -153,44 +156,96 @@ export async function placeOrder(formData: FormData) {
 
   const subtotalKobo = cartSubtotalKobo(cart);
   const discount = await discountFor(state.discountCode, subtotalKobo);
-  const totals = totalsFor(subtotalKobo, discount.amountKobo);
+  // Same delivery figures the checkout screens quoted, so what is written to the
+  // order matches what the customer was shown.
+  const totals = totalsFor(
+    subtotalKobo,
+    discount.amountKobo,
+    await storeSettings()
+  );
 
   const prisma = getPrisma();
   const sessionId = await readSessionId();
 
-  const order = await prisma.order.create({
-    data: {
-      sessionId,
-      email,
-      phone: address.phone,
-      status: "PENDING",
-      subtotalKobo: totals.subtotalKobo,
-      discountKobo: totals.discountKobo,
-      discountCode: discount.code,
-      deliveryKobo: totals.deliveryKobo,
-      totalKobo: totals.totalKobo,
-      paymentMethod: state.paymentMethod ?? "card",
-      recipientName: address.fullName,
-      addressLine: address.line1,
-      line2: address.line2,
-      city: address.city,
-      state: address.state,
-      postalCode: address.postalCode,
-      items: {
-        create: cart.items.map((line) => ({
-          variantId: line.variantId,
-          quantity: line.quantity,
-          // Frozen at purchase, so a later price change cannot rewrite history.
-          priceKobo: line.variant.priceKobo,
-          productName: line.variant.product.name,
-          size: line.variant.size,
-          color: line.variant.color,
-        })),
-      },
-    },
-  });
+  // A shopper who backs out of ALAT Pay and checks out again should not leave
+  // a trail of half-finished orders behind her — that would clutter the order
+  // list and have the abandoned-checkout mailer chase orders she has already
+  // replaced. An unpaid attempt that never reached ALAT Pay is reused, so a
+  // session has at most one live pending order.
+  const reusable = sessionId
+    ? await prisma.order.findFirst({
+        where: {
+          sessionId,
+          status: "PENDING",
+          paidAt: null,
+          // Once a transaction reference exists money may be in flight against
+          // that order, so it is left alone and a fresh one is written.
+          paymentRef: null,
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : null;
 
-  await prisma.notification.create({
+  if (reusable) {
+    // Rewritten rather than patched: the basket, address or discount may all
+    // have changed since the abandoned attempt.
+    await prisma.orderItem.deleteMany({ where: { orderId: reusable.id } });
+  }
+
+  const orderData = {
+    sessionId,
+    email,
+    phone: address.phone,
+    status: "PENDING" as const,
+    subtotalKobo: totals.subtotalKobo,
+    discountKobo: totals.discountKobo,
+    discountCode: discount.code,
+    deliveryKobo: totals.deliveryKobo,
+    totalKobo: totals.totalKobo,
+    paymentMethod: state.paymentMethod ?? "card",
+    recipientName: address.fullName,
+    addressLine: address.line1,
+    line2: address.line2,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode,
+    items: {
+      create: cart.items.map((line) => ({
+        variantId: line.variantId,
+        quantity: line.quantity,
+        // Frozen at purchase, so a later price change cannot rewrite history.
+        priceKobo: line.variant.priceKobo,
+        productName: line.variant.product.name,
+        size: line.variant.size,
+        color: line.variant.color,
+      })),
+    },
+  };
+
+  const order = reusable
+    ? await prisma.order.update({
+        where: { id: reusable.id },
+        data: orderData,
+        include: { items: true },
+      })
+    : await prisma.order.create({ data: orderData, include: { items: true } });
+
+  // Sent after the response, so a slow or unreachable mail server cannot hold
+  // up a customer who has already ordered. `after` still runs even though this
+  // action ends in a redirect. A mail failure must never lose the order.
+  // Only for a genuinely new order: resuming an abandoned attempt should not
+  // send her a second "we got your order" email for the same basket.
+  if (!reusable) {
+    after(async () => {
+      try {
+        await sendOrderReceipt(order, "placed");
+      } catch (error) {
+        console.error("order receipt failed to send", order.id, error);
+      }
+    });
+  }
+
+  if (!reusable) await prisma.notification.create({
     data: {
       sessionId,
       kind: "order-placed",
@@ -199,14 +254,33 @@ export async function placeOrder(formData: FormData) {
     },
   });
 
-  // The cart is emptied so a refresh cannot place the same order twice.
-  await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+  // Placing an order is not paying for one. The basket stays exactly as it is
+  // until money actually arrives, so a shopper who closes the ALAT Pay window
+  // — or whose card is declined — comes back to a cart that still has her
+  // things in it. It is emptied in confirmAndFulfilOrder instead.
+  //
+  // Cash on delivery is the one exception: there is no online payment step to
+  // come back from, so that order is committed here and the basket is done.
+  const cashOnDelivery = state.paymentMethod === "cash-on-delivery";
+
+  await prisma.cart.update({
+    where: { id: cart.id },
+    data: {
+      // Kept either way: if this shopper wanders off, it is the only way we
+      // can reach a guest to follow up.
+      email,
+      // This basket is mid-conversion, so an old follow-up stamp must not
+      // silence the next one.
+      recoveryEmailSentAt: null,
+      ...(cashOnDelivery ? { items: { deleteMany: {} } } : {}),
+    },
+  });
 
   revalidatePath("/", "layout");
 
   // Cash on delivery is settled in person, so it skips the payment window and
   // the order simply waits for staff to mark it paid.
-  if (state.paymentMethod === "cash-on-delivery") {
+  if (cashOnDelivery) {
     redirect(`/checkout/confirmed?order=${order.id}`);
   }
 

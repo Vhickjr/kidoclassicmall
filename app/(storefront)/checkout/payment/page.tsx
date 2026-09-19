@@ -49,16 +49,13 @@ export default async function PaymentMethodPage() {
                 Card details are entered in ALAT Pay&rsquo;s window
               </p>
               <p className="mt-2 leading-relaxed">
-                The mockup for this screen asks for a card number, expiry and
-                CVV. Taking those into our own form would put this store in the
-                strictest tier of PCI-DSS scope, and storing a CVV is never
-                permitted at all. Instead this step records the chosen method,
-                then hands off to ALAT Pay, which returns a reference we keep in{" "}
-                <code>Order.paymentRef</code>.
+                <b>Card Payment</b>
+                You’ll be securely redirected to ALAT Pay to enter your card details and complete your payment.
+                Your card details are handled securely by ALAT Pay and are not stored by our store.
               </p>
               <p className="mt-2 leading-relaxed">
-                Choosing Cash on Delivery skips the payment window and leaves the
-                order for staff to settle in person.
+                <b>Cash on Delivery</b>
+                Pay when your order is delivered. No online payment is required.
               </p>
             </div>
 

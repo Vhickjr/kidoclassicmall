@@ -16,6 +16,14 @@ export default async function ShippingAddressPage() {
 
   const addresses = await addressBook();
 
+  // For the "Proceed to Payment" shortcut: whichever address is already chosen
+  // for this checkout, else the default, else whatever exists — so a repeat
+  // customer never has to click "Deliver here" just to confirm the obvious.
+  const quickAddress =
+    addresses.find((address) => address.id === state.addressId) ??
+    addresses.find((address) => address.isDefault) ??
+    addresses[0];
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-12">
       <h1 className="text-3xl tracking-tight text-brand-dark">Shipping Address</h1>
@@ -145,13 +153,33 @@ export default async function ShippingAddressPage() {
               Use as my default address
             </label>
 
-            <button
-              type="submit"
-              className="mt-6 bg-brand px-8 py-3.5 text-sm text-white"
-            >
-              Add New Address
-            </button>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                className="bg-brand px-8 py-3.5 text-sm text-white"
+              >
+                Add New Address
+              </button>
+
+              {quickAddress && (
+                <button
+                  type="submit"
+                  // The `form` attribute submits the hidden form below even
+                  // though this button sits inside the address-creation form.
+                  form="quick-payment"
+                  className="border border-brand px-8 py-3.5 text-sm text-brand-deep hover:bg-brand-soft/40"
+                >
+                  Proceed to Payment
+                </button>
+              )}
+            </div>
           </form>
+
+          {quickAddress && (
+            <form id="quick-payment" action={selectAddress} className="hidden">
+              <input type="hidden" name="addressId" value={quickAddress.id} />
+            </form>
+          )}
         </div>
 
         <OrderSummary

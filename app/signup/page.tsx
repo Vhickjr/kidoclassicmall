@@ -15,7 +15,7 @@ export default async function SignupPage() {
   if (await getSessionUser()) redirect("/account");
 
   return (
-    <AuthSplit photoSeed="auth-signup" showLogo>
+    <AuthSplit showLogo>
       <h1 className="text-3xl font-bold tracking-tight">Create New Account</h1>
       <p className="mt-2 text-sm text-muted">Please enter details</p>
 

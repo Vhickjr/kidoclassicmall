@@ -15,12 +15,25 @@ const globalForPrisma = globalThis as unknown as {
 function parseMariaDbUrl(url: string) {
   const parsed = new URL(url);
 
+  // MySQL 8's caching_sha2_password needs either TLS or the server's RSA public
+  // key to complete a full handshake. A local dev container has neither, and
+  // its auth cache empties every time the container restarts — which is what
+  // turns the whole site into pool timeouts the morning after.
+  //
+  // Only ever relaxed for a database on this machine. Fetching a key over a
+  // plaintext link to a remote host would be a genuine interception risk, so
+  // production keeps the strict behaviour.
+  const host = parsed.hostname;
+  const isLocal =
+    host === "127.0.0.1" || host === "localhost" || host === "::1";
+
   return {
-    host: parsed.hostname,
+    host,
     port: parsed.port ? Number(parsed.port) : 3306,
     user: decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
     database: parsed.pathname.replace(/^\//, ""),
+    ...(isLocal ? { allowPublicKeyRetrieval: true } : {}),
   };
 }
 
@@ -49,11 +62,11 @@ export function getPrisma(): PrismaClient {
     globalForPrisma.pool = mariadb.createPool({
       // `mariadb://` is not a scheme the driver's own config parser accepts,
       // but it is what the adapter expects, so the URL is passed through here.
-      connectionLimit: 4,
+      connectionLimit: 15,
       // Thirty minutes: long enough that a quiet period does not churn the pool.
       idleTimeout: 1800,
-      // Reclaim a connection that a crashed request never returned.
-      acquireTimeout: 10_000,
+      // Allow requests to wait up to 30s during massive concurrent traffic spikes
+      acquireTimeout: 30_000,
       // Verify a pooled connection is still alive before handing it out, so a
       // server-side timeout surfaces as a retry rather than a failed request.
       minimumIdle: 1,

@@ -3,6 +3,12 @@ import Link from "next/link";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { koboToNaira } from "@/lib/format";
+import {
+  RevenueChart,
+  StatusChart,
+  type RevenuePoint,
+  type StatusSlice,
+} from "@/app/_components/admin-charts";
 
 export const metadata: Metadata = { title: "Admin dashboard" };
 
@@ -40,6 +46,58 @@ export default async function AdminDashboardPage() {
 
   const revenue = paidOrders.reduce((total, order) => total + order.totalKobo, 0);
 
+  // Fourteen days of paid revenue, bucketed by day. Read once and grouped here
+  // rather than fourteen separate COUNT queries.
+  const since = new Date();
+  since.setDate(since.getDate() - 13);
+  since.setHours(0, 0, 0, 0);
+
+  const [recentPaid, statusCounts] = await Promise.all([
+    prisma.order.findMany({
+      where: {
+        status: { in: ["PAID", "FULFILLED"] },
+        // Either date qualifies: orders settled by hand before paidAt was being
+        // stamped have only createdAt, and dropping them would understate revenue.
+        OR: [{ paidAt: { gte: since } }, { paidAt: null, createdAt: { gte: since } }],
+      },
+      select: { paidAt: true, createdAt: true, totalKobo: true },
+    }),
+    prisma.order.groupBy({ by: ["status"], _count: { _all: true } }),
+  ]);
+
+  const byDay = new Map<string, number>();
+  for (const order of recentPaid) {
+    const when = order.paidAt ?? order.createdAt;
+    const key = when.toISOString().slice(0, 10);
+    byDay.set(key, (byDay.get(key) ?? 0) + order.totalKobo);
+  }
+
+  const points: RevenuePoint[] = Array.from({ length: 14 }, (_, index) => {
+    const day = new Date(since);
+    day.setDate(since.getDate() + index);
+    const key = day.toISOString().slice(0, 10);
+
+    return {
+      day: key,
+      label: day.toLocaleDateString("en-NG", { day: "numeric", month: "short" }),
+      totalKobo: byDay.get(key) ?? 0,
+    };
+  });
+
+  const countFor = (status: string) =>
+    statusCounts.find((row) => row.status === status)?._count._all ?? 0;
+
+  const slices: StatusSlice[] = [
+    { key: "PENDING", label: "Awaiting payment", count: countFor("PENDING") },
+    { key: "PAID", label: "Paid", count: countFor("PAID") },
+    { key: "FULFILLED", label: "Fulfilled", count: countFor("FULFILLED") },
+    {
+      key: "CLOSED",
+      label: "Cancelled or refunded",
+      count: countFor("CANCELLED") + countFor("REFUNDED"),
+    },
+  ].filter((slice) => slice.count > 0);
+
   return (
     <div>
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
@@ -53,6 +111,11 @@ export default async function AdminDashboardPage() {
           value={`${publishedCount} live / ${productCount}`}
         />
       </ul>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <RevenueChart points={points} />
+        <StatusChart slices={slices} />
+      </div>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-2">
         <section>

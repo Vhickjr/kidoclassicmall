@@ -103,7 +103,11 @@ export default async function ProductPage({
       </div>
 
       <div className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-8 md:grid-cols-2">
-        <Gallery images={imageList(product.images)} alt={product.name} />
+        <Gallery
+          images={imageList(product.images)}
+          video={product.videoUrl}
+          alt={product.name}
+        />
 
         <div>
           <div className="flex items-start justify-between gap-4">

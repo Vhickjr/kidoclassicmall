@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Trash2 } from "lucide-react";
+import { RefreshCw, Trash2 } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import {
   deleteCurrency,
+  refreshExchangeRates,
   toggleCurrency,
+  toggleCurrencyAutoRate,
   upsertCurrency,
 } from "@/app/_actions/admin";
 
@@ -25,6 +27,20 @@ export default async function AdminCurrenciesPage() {
         are still stored and <strong>charged in naira</strong> — these rates only
         change what a customer reads, never what they are billed. Naira is always
         available and does not need adding.
+      </p>
+
+      <form action={refreshExchangeRates} className="mt-6">
+        <button
+          type="submit"
+          className="flex items-center gap-2 border border-brand px-5 py-2.5 text-sm text-brand-deep hover:bg-brand-soft/40"
+        >
+          <RefreshCw aria-hidden className="size-4" />
+          Update rates from the live feed
+        </button>
+      </form>
+      <p className="mt-2 text-xs text-muted">
+        Rates continuously and automatically update in the background every hour from the live exchange feed.
+        You can also click the button above to force an instant refresh anytime. Pinned rates are left untouched.
       </p>
 
       <form action={upsertCurrency} className="mt-8 flex max-w-3xl flex-wrap gap-3">
@@ -65,6 +81,15 @@ export default async function AdminCurrenciesPage() {
             className="mt-1.5 w-full border border-line px-3 py-2.5 text-sm outline-none focus:border-brand"
           />
         </label>
+        <label className="flex items-center gap-2 self-end pb-3 text-sm">
+          <input
+            type="checkbox"
+            name="autoRate"
+            defaultChecked
+            className="size-4 accent-brand"
+          />
+          Follow live rate
+        </label>
         <button
           type="submit"
           className="self-end bg-brand px-6 py-2.5 text-sm text-white"
@@ -97,7 +122,21 @@ export default async function AdminCurrenciesPage() {
               </p>
               <p className="text-sm">
                 &#8358;1 = {currency.unitsPerNaira} {currency.code}
+                <span className="ml-2 text-xs text-muted">
+                  {currency.autoRate
+                    ? currency.rateUpdatedAt
+                      ? `live · auto-updated ${currency.rateUpdatedAt.toLocaleString("en-NG", { dateStyle: "short", timeStyle: "short" })}`
+                      : "live · auto-updating..."
+                    : "pinned"}
+                </span>
               </p>
+
+              <form action={toggleCurrencyAutoRate}>
+                <input type="hidden" name="currencyId" value={currency.id} />
+                <button type="submit" className="text-sm underline">
+                  {currency.autoRate ? "Pin rate" : "Follow live"}
+                </button>
+              </form>
               <span
                 className={`px-2 py-1 text-xs ${
                   currency.active

@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Minus, Plus } from "lucide-react";
 import { colorSwatch, compareSizes } from "@/lib/format";
-import { addToCart } from "@/app/_actions/cart";
+import { addToCart, buyNow } from "@/app/_actions/cart";
 import WishlistButton from "@/app/_components/wishlist-button";
 import Money from "@/app/_components/money";
+import { triggerCartOpen } from "@/app/_components/cart-state";
 
 export type PanelVariant = {
   id: string;
   size: string;
   color: string | null;
+  customOptions?: Record<string, string> | unknown;
   priceKobo: number;
   compareAtKobo: number | null;
   stock: number;
@@ -25,16 +27,57 @@ export default function BuyPanel({
   saved: boolean;
   variants: PanelVariant[];
 }) {
-  const colors = [
-    ...new Set(variants.map((v) => v.color).filter((c): c is string => Boolean(c))),
-  ];
-  const sizes = [...new Set(variants.map((v) => v.size))].sort(compareSizes);
+  const colors = useMemo(
+    () => [
+      ...new Set(variants.map((v) => v.color).filter((c): c is string => Boolean(c))),
+    ],
+    [variants]
+  );
+  const sizes = useMemo(
+    () => [...new Set(variants.map((v) => v.size))].sort(compareSizes),
+    [variants]
+  );
+
+  // Discover all custom option keys across variants (e.g., Material, Style, Weight, etc.)
+  const customKeys = useMemo(() => {
+    const keysSet = new Set<string>();
+    for (const v of variants) {
+      if (
+        v.customOptions &&
+        typeof v.customOptions === "object" &&
+        !Array.isArray(v.customOptions)
+      ) {
+        for (const k of Object.keys(v.customOptions as Record<string, string>)) {
+          if (k) keysSet.add(k);
+        }
+      }
+    }
+    return Array.from(keysSet);
+  }, [variants]);
 
   const firstInStock = variants.find((variant) => variant.stock > 0);
   const [color, setColor] = useState<string | null>(
     firstInStock?.color ?? colors[0] ?? null
   );
   const [size, setSize] = useState<string | null>(firstInStock?.size ?? null);
+
+  // Initialize selected custom variation values
+  const [customSelected, setCustomSelected] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    if (firstInStock?.customOptions && typeof firstInStock.customOptions === "object") {
+      const opts = firstInStock.customOptions as Record<string, string>;
+      for (const k of customKeys) {
+        if (opts[k]) initial[k] = opts[k];
+      }
+    } else if (variants[0]?.customOptions && typeof variants[0].customOptions === "object") {
+      const opts = variants[0].customOptions as Record<string, string>;
+      for (const k of customKeys) {
+        if (opts[k]) initial[k] = opts[k];
+      }
+    }
+    return initial;
+  });
+
   const [quantity, setQuantity] = useState(1);
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<
@@ -44,10 +87,25 @@ export default function BuyPanel({
   const inColor = (variant: PanelVariant) =>
     color === null || variant.color === null || variant.color === color;
 
-  const selected =
-    variants.find(
-      (variant) => inColor(variant) && variant.size === size
-    ) ?? null;
+  const selected = useMemo(() => {
+    return (
+      variants.find((variant) => {
+        if (!inColor(variant)) return false;
+        if (size !== null && variant.size !== size) return false;
+
+        if (customKeys.length > 0) {
+          const opts =
+            (variant.customOptions as Record<string, string>) || {};
+          for (const key of customKeys) {
+            if (customSelected[key] && opts[key] !== customSelected[key]) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }) ?? null
+    );
+  }, [variants, color, size, customKeys, customSelected]);
 
   const cheapest = Math.min(...variants.map((variant) => variant.priceKobo));
   const price = selected ? selected.priceKobo : cheapest;
@@ -82,7 +140,6 @@ export default function BuyPanel({
                   type="button"
                   onClick={() => {
                     setColor(option);
-                    // The chosen size may not exist in the new colour.
                     const stillThere = variants.some(
                       (variant) =>
                         variant.color === option && variant.size === size
@@ -138,7 +195,7 @@ export default function BuyPanel({
 
         <p className="mt-3 text-sm text-muted">
           {!selected
-            ? "Pick a size to see availability."
+            ? "Pick your options to see availability."
             : cap === 0
               ? "That combination is sold out."
               : cap <= 3
@@ -146,6 +203,46 @@ export default function BuyPanel({
                 : "In stock."}
         </p>
       </div>
+
+      {/* Render Custom Variations (e.g. Material, Pack Size, Style, etc.) */}
+      {customKeys.map((key) => {
+        const optionValues = Array.from(
+          new Set(
+            variants
+              .map((v) => (v.customOptions as Record<string, string>)?.[key])
+              .filter((val): val is string => Boolean(val))
+          )
+        );
+
+        if (optionValues.length === 0) return null;
+
+        return (
+          <div key={key} className="mt-8">
+            <h2 className="text-sm font-semibold">{key}</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {optionValues.map((val) => {
+                const isSelected = customSelected[key] === val;
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => {
+                      setCustomSelected((prev) => ({ ...prev, [key]: val }));
+                    }}
+                    className={`border px-4 py-2 text-sm font-medium transition ${
+                      isSelected
+                        ? "border-brand bg-brand text-white"
+                        : "border-line hover:border-foreground"
+                    }`}
+                  >
+                    {val}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <div className="flex items-center border border-line">
@@ -177,16 +274,34 @@ export default function BuyPanel({
             if (!selected) return;
             startTransition(async () => {
               const result = await addToCart(selected.id, quantity);
-              setFeedback(
-                result.ok
-                  ? { ok: true, message: "Added to your cart." }
-                  : { ok: false, message: result.error }
-              );
+              if (result.ok) {
+                setFeedback({ ok: true, message: "Added to your cart!" });
+                triggerCartOpen();
+              } else {
+                setFeedback({ ok: false, message: result.error });
+              }
             });
           }}
-          className="flex-1 bg-brand px-8 py-3.5 text-sm text-white disabled:opacity-40"
+          className="flex-1 border border-brand px-6 py-3.5 text-sm text-brand-deep hover:bg-brand-soft/40 disabled:opacity-40"
         >
           {pending ? "Adding…" : "Add to Cart"}
+        </button>
+
+        <button
+          type="button"
+          disabled={!selected || cap === 0 || pending}
+          onClick={() => {
+            if (!selected) return;
+            startTransition(async () => {
+              const result = await buyNow(selected.id, quantity);
+              if (result && !result.ok) {
+                setFeedback({ ok: false, message: result.error });
+              }
+            });
+          }}
+          className="flex-1 bg-brand px-6 py-3.5 text-sm text-white disabled:opacity-40"
+        >
+          Buy now
         </button>
 
         <WishlistButton productId={productId} initiallySaved={saved} />
@@ -195,7 +310,7 @@ export default function BuyPanel({
       {feedback && (
         <p
           role="status"
-          className={`mt-3 text-sm ${feedback.ok ? "text-green-700" : "text-red-600"}`}
+          className={`mt-3 text-sm font-medium ${feedback.ok ? "text-green-700" : "text-red-600"}`}
         >
           {feedback.message}
         </p>

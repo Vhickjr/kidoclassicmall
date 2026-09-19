@@ -15,11 +15,14 @@ export default function ImageUploader({
   name,
   initial = [],
   multiple = true,
+  accept = "image/*",
   onChange,
 }: {
   name?: string;
   initial?: string[];
   multiple?: boolean;
+  /** Pass "image/*,video/*" for story slides, which may be either. */
+  accept?: string;
   onChange?: (urls: string[]) => void;
 }) {
   const [urls, setUrls] = useState<string[]>(initial);
@@ -50,8 +53,12 @@ export default function ImageUploader({
       body.append("folder", ticket.folder);
       body.append("signature", ticket.signature);
 
+      // "auto" lets Cloudinary decide between image and video from the file
+      // itself, which is what story slides need.
+      const resourceType = accept.includes("video") ? "auto" : "image";
+
       const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${ticket.cloudName}/image/upload`,
+        `https://api.cloudinary.com/v1_1/${ticket.cloudName}/${resourceType}/upload`,
         { method: "POST", body }
       );
 
@@ -78,12 +85,20 @@ export default function ImageUploader({
         <ul className="mb-3 flex flex-wrap gap-3">
           {urls.map((url, index) => (
             <li key={url} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt={`Image ${index + 1}`}
-                className="size-20 rounded border border-line bg-brand-soft/40 object-cover"
-              />
+              {/\.(mp4|webm|mov)(\?|$)/i.test(url) ? (
+                <video
+                  src={url}
+                  muted
+                  className="size-20 rounded border border-line bg-brand-soft/40 object-cover"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={url}
+                  alt={`Upload ${index + 1}`}
+                  className="size-20 rounded border border-line bg-brand-soft/40 object-cover"
+                />
+              )}
               <button
                 type="button"
                 aria-label={`Remove image ${index + 1}`}
@@ -108,10 +123,16 @@ export default function ImageUploader({
         ) : (
           <ImagePlus aria-hidden className="size-4" />
         )}
-        {pending ? "Uploading…" : multiple ? "Upload images" : "Upload image"}
+        {pending
+          ? "Uploading…"
+          : accept.includes("video")
+            ? "Upload image or video"
+            : multiple
+              ? "Upload images"
+              : "Upload image"}
         <input
           type="file"
-          accept="image/*"
+          accept={accept}
           multiple={multiple}
           disabled={pending}
           className="hidden"

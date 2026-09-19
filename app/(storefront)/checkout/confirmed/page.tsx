@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { readSessionId } from "@/lib/cart";
@@ -22,6 +22,18 @@ export default async function OrderConfirmedPage({
 
   // An order id in a URL is guessable, so only show it to the cookie that placed it.
   if (!order || !sessionId || order.sessionId !== sessionId) notFound();
+
+  // This screen is the receipt for money that actually arrived. Clicking "Place
+  // Order" or "Pay now" does not get you here — only a payment ALAT Pay
+  // confirmed to our server does, so nobody can reach a thank-you page by
+  // closing the payment window and guessing the URL.
+  //
+  // Cash on delivery is the exception: there is no online payment to wait for,
+  // so that order is genuinely confirmed the moment it is placed.
+  const awaitingPayment =
+    order.status === "PENDING" && order.paymentMethod !== "cash-on-delivery";
+
+  if (awaitingPayment) redirect(`/checkout/pay/${order.id}`);
 
   return (
     <div className="mx-auto w-full max-w-xl px-4 py-20 text-center">
@@ -60,7 +72,7 @@ export default async function OrderConfirmedPage({
 
       {order.status === "PENDING" && (
         <p className="mt-4 rounded border border-dashed border-line px-3 py-2 text-xs text-muted">
-          This order is not paid yet. Stock moves only once payment confirms.
+          This order is not paid yet. 
         </p>
       )}
 

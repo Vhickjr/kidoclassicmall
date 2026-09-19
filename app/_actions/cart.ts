@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { CART_COOKIE } from "@/lib/cart";
@@ -131,4 +132,21 @@ export async function removeCartItem(formData: FormData) {
 
   await getPrisma().cartItem.delete({ where: { id: item.id } });
   refresh();
+}
+
+/**
+ * Add one item and go straight to checkout.
+ *
+ * Deliberately adds to the existing cart rather than replacing it: a shopper who
+ * already has things in their basket should not lose them because they pressed
+ * Buy now on a fourth item.
+ */
+export async function buyNow(
+  variantId: string,
+  quantity: number
+): Promise<ActionResult> {
+  const result = await addToCart(variantId, quantity);
+  if (!result.ok) return result;
+
+  redirect("/checkout/address");
 }

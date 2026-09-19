@@ -1,26 +1,17 @@
 import Logo from "@/app/_components/logo";
 
-// Placeholder photography, same as the storefront.
-const photo = (seed: string) => `https://picsum.photos/seed/${seed}/1200/1400`;
-
 export default function AuthSplit({
-  photoSeed,
   showLogo = false,
   children,
 }: {
-  photoSeed: string;
   showLogo?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden lg:block">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={photo(photoSeed)}
-          alt=""
-          className="h-full w-full bg-brand-soft/40 object-cover"
-        />
+      {/* A brand panel rather than stock photography. Swap in a real campaign
+          picture here once there is one to use. */}
+      <div className="relative hidden bg-gradient-to-br from-brand-soft via-brand-soft/60 to-brand/25 lg:block">
         {showLogo && (
           <span className="absolute left-10 top-8">
             <Logo size={56} showLabel={false} />

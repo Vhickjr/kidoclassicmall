@@ -15,7 +15,7 @@ export default async function LoginPage() {
   if (await getSessionUser()) redirect("/account");
 
   return (
-    <AuthSplit photoSeed="auth-login" showLogo>
+    <AuthSplit showLogo>
       <h1 className="text-3xl font-bold tracking-tight">Welcome 👋</h1>
       <p className="mt-2 text-sm text-muted">Please login here</p>
 

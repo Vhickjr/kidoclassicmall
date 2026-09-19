@@ -1,5 +1,8 @@
 import "server-only";
+import { after } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { sendPaidReceiptOnce } from "@/lib/receipts";
+import { removePurchasedFromBasket } from "@/lib/basket-settle";
 
 /**
  * ALAT Pay, server side.
@@ -190,11 +193,19 @@ export async function confirmAndFulfilOrder(
           body: `Order ${orderId.slice(-8)} is paid and being prepared.`,
         },
       });
+
+      // Only now is the basket done with.
+      await removePurchasedFromBasket(tx, order);
     });
   } catch (error) {
     console.error("alatpay fulfilment failed", orderId, error);
     return { ok: false, error: "Could not complete this order." };
   }
+
+  // Outside the transaction, and off the response path: the order is committed
+  // as paid, and an SMTP round trip must neither hold a database connection
+  // open nor keep the shopper waiting on the payment screen.
+  after(() => sendPaidReceiptOnce(orderId));
 
   return { ok: true, alreadyPaid: false };
 }

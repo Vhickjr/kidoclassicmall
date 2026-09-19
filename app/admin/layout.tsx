@@ -1,17 +1,25 @@
 import Link from "next/link";
 import {
+  Camera,
+  Coins,
+  FileText,
   LayoutDashboard,
   LogOut,
+  Mail,
+  Newspaper,
   Package,
   Percent,
   ReceiptText,
-  Coins,
+  Settings as SettingsIcon,
   Star,
   Store,
+  Tag,
   Tags,
   Users,
+  ShoppingBag,
 } from "lucide-react";
 import Logo from "@/app/_components/logo";
+import MobileNav from "@/app/_components/mobile-nav";
 import { requireAdmin } from "@/lib/auth";
 import { signInAdmin, signOutAdmin } from "@/app/_actions/admin";
 
@@ -21,9 +29,16 @@ const NAV = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/discounts", label: "Discounts", icon: Percent },
+  { href: "/admin/stories", label: "Instagram Stories", icon: Camera },
   { href: "/admin/currencies", label: "Currencies", icon: Coins },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
+  { href: "/admin/blog", label: "Blog", icon: Newspaper },
+  { href: "/admin/pages", label: "Pages", icon: FileText },
+  { href: "/admin/deals", label: "Deals", icon: Tag },
+  { href: "/admin/abandoned", label: "Abandoned carts", icon: ShoppingBag },
+  { href: "/admin/subscribers", label: "Subscribers", icon: Mail },
   { href: "/admin/staff", label: "Staff & roles", icon: Users },
+  { href: "/admin/settings", label: "Store settings", icon: SettingsIcon },
 ];
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
@@ -68,11 +83,30 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       <aside className="border-b border-line bg-surface lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r">
-        <div className="p-5">
+        <div className="flex items-center justify-between p-5">
           <Logo size={36} href="/admin" label="Kidoclassic admin" />
+          <MobileNav
+            label="Admin"
+            links={[
+              ...NAV.map((item) => ({ href: item.href, label: item.label })),
+              { href: "/", label: "View storefront" },
+            ]}
+          >
+            {/* Sign out belongs in the menu too — on a phone the sidebar that
+                normally carries it is hidden. */}
+            <form action={signOutAdmin}>
+              <button
+                type="submit"
+                className="flex items-center gap-3 text-sm text-muted hover:text-foreground"
+              >
+                <LogOut aria-hidden className="size-4" />
+                Sign out
+              </button>
+            </form>
+          </MobileNav>
         </div>
 
-        <nav>
+        <nav className="hidden md:block">
           <ul>
             {NAV.map((item) => (
               <li key={item.href}>
@@ -88,7 +122,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </ul>
         </nav>
 
-        <div className="mt-6 border-t border-line p-5">
+        <div className="mt-6 hidden border-t border-line p-5 md:block">
           <Link
             href="/"
             className="flex items-center gap-3 text-sm text-muted hover:text-foreground"

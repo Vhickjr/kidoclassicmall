@@ -175,7 +175,124 @@ async function main() {
     });
     console.log("seeded", product.slug, `(${rows.length} variants)`);
   }
+
+  // ---------------------------------------------------------------------------
+  // Instagram Stories Seeding
+  // ---------------------------------------------------------------------------
+  await prisma.story.deleteMany();
+
+  const momJeans = await prisma.product.findUnique({ where: { slug: "high-waist-mom-jeans" } });
+  const denimJacket = await prisma.product.findUnique({ where: { slug: "cropped-denim-jacket" } });
+  const blockHeel = await prisma.product.findUnique({ where: { slug: "leather-block-heel" } });
+  const sandal = await prisma.product.findUnique({ where: { slug: "strappy-flat-sandal" } });
+
+  await prisma.story.create({
+    data: {
+      title: "Denim Staples 👖",
+      brandHandle: "@kidoclassic",
+      coverImage: photo("jeans-a1"),
+      position: 1,
+      active: true,
+      slides: {
+        create: [
+          {
+            mediaUrl: photo("jeans-a1"),
+            mediaType: "IMAGE",
+            caption: "High-waist mom jeans with rigid denim fit ✨",
+            durationSec: 5,
+            productId: momJeans?.id || null,
+            position: 1,
+          },
+          {
+            mediaUrl: photo("denim-d1"),
+            mediaType: "IMAGE",
+            caption: "Pair it with our raw-hem cropped denim jacket 🔥",
+            durationSec: 5,
+            productId: denimJacket?.id || null,
+            position: 2,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.story.create({
+    data: {
+      title: "Weekend Footwear 👠",
+      brandHandle: "@kidoclassic",
+      coverImage: photo("heel-a1"),
+      position: 2,
+      active: true,
+      slides: {
+        create: [
+          {
+            mediaUrl: photo("heel-a1"),
+            mediaType: "IMAGE",
+            caption: "Softened leather block heels for all-night comfort 💃",
+            durationSec: 5,
+            productId: blockHeel?.id || null,
+            position: 1,
+          },
+          {
+            mediaUrl: photo("sandal-a1"),
+            mediaType: "IMAGE",
+            caption: "Casual strappy flat sandals for everyday lounge ☀️",
+            durationSec: 5,
+            productId: sandal?.id || null,
+            position: 2,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.story.create({
+    data: {
+      title: "Cargo Trends 🎒",
+      brandHandle: "@kidoclassic",
+      coverImage: photo("jeans-c1"),
+      position: 3,
+      active: true,
+      slides: {
+        create: [
+          {
+            mediaUrl: photo("jeans-c1"),
+            mediaType: "IMAGE",
+            caption: "Wide-leg cargo jeans with utility thigh pockets",
+            durationSec: 5,
+            productId: null,
+            position: 1,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.story.create({
+    data: {
+      title: "New Arrivals ✨",
+      brandHandle: "@kidoclassic",
+      coverImage: photo("court-a1"),
+      position: 4,
+      active: true,
+      slides: {
+        create: [
+          {
+            mediaUrl: photo("court-a1"),
+            mediaType: "IMAGE",
+            caption: "Pointed court shoes now back in stock!",
+            durationSec: 5,
+            productId: null,
+            position: 1,
+          },
+        ],
+      },
+    },
+  });
+
+  console.log("seeded Instagram stories with product attachments");
 }
+
 
 main()
   .then(() => prisma.$disconnect())

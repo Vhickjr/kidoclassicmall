@@ -1,5 +1,6 @@
 import SiteHeader from "@/app/_components/site-header";
 import SiteFooter from "@/app/_components/site-footer";
+import WhatsAppButton from "@/app/_components/whatsapp-button";
 import VerifyEmailBanner from "@/app/_components/verify-email-banner";
 import { getSessionUser } from "@/lib/auth";
 import { activeCurrency } from "@/lib/currency-server";
@@ -20,6 +21,7 @@ export default async function StorefrontLayout({
       {showBanner && <VerifyEmailBanner />}
       <main className="flex-1">{children}</main>
       <SiteFooter />
+      <WhatsAppButton />
     </CurrencyProvider>
   );
 }

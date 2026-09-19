@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { getPrisma } from "@/lib/prisma";
@@ -149,10 +149,6 @@ export async function requireSuperAdmin(): Promise<boolean> {
 /*  Password-reset & email-verification helpers                       */
 /* ------------------------------------------------------------------ */
 
-function getVerificationSecret(): string {
-  return process.env.ADMIN_SECRET || "dev-verification-key";
-}
-
 /**
  * Generate a 5-digit numeric reset code and persist a PasswordResetToken row.
  * Any previous unused tokens for the same user are invalidated first.
@@ -211,17 +207,21 @@ export async function verifyPasswordResetCode(
 }
 
 /**
- * Generate an email-verification token (HMAC-based) and persist it
- * as a PasswordResetToken row with code='EMAIL_VERIFY' and 24-hour expiry.
+ * Generate a random email-verification token and persist it as a
+ * PasswordResetToken row with code='EMAIL_VERIFY' and 24-hour expiry.
  */
 export async function generateEmailVerificationToken(
   userId: string
 ): Promise<string> {
   const prisma = getPrisma();
 
-  const token = createHmac("sha256", getVerificationSecret())
-    .update(userId + ":" + Date.now())
-    .digest("hex");
+  // Random, not derived. This used to be an HMAC over `userId + Date.now()`
+  // keyed on a secret that fell back to a fixed string in this repo — so with
+  // that fallback in play, anyone who knew a user id could grind the
+  // millisecond timestamp offline and forge a valid verification link. The
+  // token is looked up in the database anyway, so it only ever needed to be
+  // unguessable.
+  const token = randomBytes(32).toString("hex");
 
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 

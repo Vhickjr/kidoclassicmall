@@ -18,7 +18,7 @@ export default async function ResetPasswordPage({
   if (!token || !email) redirect("/forgot-password");
 
   return (
-    <AuthSplit photoSeed="auth-reset">
+    <AuthSplit>
       <h1 className="text-3xl font-bold tracking-tight">Set New Password</h1>
       <p className="mt-2 text-sm text-muted">
         Enter your new password below.

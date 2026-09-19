@@ -34,6 +34,8 @@ model Product {
   // A JSON array of URLs, ordered, first one is the card image. MySQL has no
   // scalar list type, so read it through imageList() rather than trusting it.
   images      Json?
+  /// One showcase video shown alongside the photos on the product page.
+  videoUrl    String?  @db.Text
   status      Status   @default(DRAFT)
 
   categoryId String?
@@ -42,6 +44,7 @@ model Product {
   variants ProductVariant[]
   wishedBy WishlistItem[]
   reviews  Review[]
+  storyItems StoryItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -95,6 +98,8 @@ model ProductVariant {
 
   size  String
   color String?
+  /// Additional custom variation key-value pairs (e.g., {"Material": "Silk", "Style": "Slim Fit"})
+  customOptions Json?
 
   // Kobo, not Naira. Storing money as an integer of the smallest unit avoids
   // every floating point rounding bug you would otherwise hit at checkout.
@@ -110,8 +115,7 @@ model ProductVariant {
   cartItems  CartItem[]
   orderItems OrderItem[]
 
-  // One row per size/color combination per product.
-  @@unique([productId, size, color])
+  @@index([productId, size, color])
   @@index([productId])
 }
 
@@ -243,10 +247,20 @@ model Cart {
   user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessionId String?    @unique // guests, cookie-backed
   items     CartItem[]
+
+  /// Where to send an abandoned-cart nudge. Filled in from the signed-in user,
+  /// or from a guest's checkout email once they reach the payment step — a
+  /// guest cart with no email simply cannot be followed up.
+  email               String?
+  /// Stamped when a follow-up goes out, so nobody is emailed about the same
+  /// cart twice.
+  recoveryEmailSentAt DateTime?
+
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
   @@index([userId])
+  @@index([updatedAt])
 }
 
 model CartItem {
@@ -297,6 +311,13 @@ model Order {
   paymentRef String?   @unique
   paidAt     DateTime?
 
+  /// Stamped when an unpaid-order follow-up is sent, so a customer is nudged
+  /// once rather than on every sweep.
+  recoveryEmailSentAt DateTime?
+  /// Stamped when the paid receipt goes out, so re-confirming or a second
+  /// webhook delivery cannot send a duplicate receipt.
+  receiptSentAt       DateTime?
+
   items     OrderItem[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
@@ -304,6 +325,7 @@ model Order {
   @@index([status])
   @@index([userId])
   @@index([sessionId])
+  @@index([createdAt])
 }
 
 enum OrderStatus {
@@ -329,6 +351,7 @@ model OrderItem {
   productName String
   size        String
   color       String?
+  customOptions Json?
 }
 
 /// Display currencies for the storefront.
@@ -345,7 +368,201 @@ model Currency {
   /// How many units of this currency one naira buys. NGN itself is 1.
   unitsPerNaira Float
 
+  /// When true a rate refresh overwrites unitsPerNaira from the live feed.
+  /// Turn it off to pin a rate you set by hand.
+  autoRate Boolean @default(true)
+
+  /// When the live feed last wrote this rate, so staleness is visible.
+  rateUpdatedAt DateTime?
+
   active    Boolean  @default(true)
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+}
+
+/// Single row of shop-wide settings. Kept as one row rather than a key/value
+/// table so the values stay typed and a missing setting cannot mean "free".
+model StoreSettings {
+  id String @id @default("singleton")
+
+  /// Flat delivery charge in kobo.
+  deliveryFlatKobo Int @default(250000)
+
+  /// Order value in kobo above which delivery is free. Set high to disable.
+  freeDeliveryOverKobo Int @default(15000000)
+
+  // --- Home page hero, editable from the admin ---
+  heroEyebrow   String? @db.Text
+  heroTitle     String? @db.Text
+  heroSubtitle  String? @db.Text
+  heroCtaLabel  String?
+  heroCtaHref   String?
+  /// The hero is two equal halves, each its own background image.
+  heroLeftImage  String? @db.Text
+  heroRightImage String? @db.Text
+
+  // --- WhatsApp chat button. Hidden entirely until switched on here. ---
+  whatsappEnabled Boolean @default(false)
+  whatsappNumber  String?
+  /// Prefilled text the shopper sends. Blank means an empty message.
+  whatsappMessage String? @db.Text
+
+  // --- Abandoned checkout follow-up ---
+  abandonedEmailEnabled Boolean @default(false)
+  /// How long a cart or unpaid order sits before it counts as abandoned.
+  abandonedAfterHours   Int     @default(24)
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Newsletter signups from the footer.
+model Subscriber {
+  id    String @id @default(cuid())
+  email String @unique
+
+  /// Where the signup came from, so a future form can be told apart.
+  source String @default("footer")
+
+  /// Kept rather than deleted, so a re-signup does not silently resurrect
+  /// someone who asked to be removed.
+  unsubscribedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([unsubscribedAt])
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model BlogPost {
+  id      String @id @default(cuid())
+  slug    String @unique
+  title   String
+  excerpt String? @db.Text
+  body    String  @db.Text
+
+  coverImage String?
+  status     PostStatus @default(DRAFT)
+
+  /// Set when first published, so reordering drafts does not disturb the feed.
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+/// Editable standalone pages — Our Story, Contact Us, and anything similar.
+/// Seeded by slug rather than created freely, so the footer can link to a known
+/// address that always resolves.
+model SitePage {
+  id      String @id @default(cuid())
+  slug    String @unique
+  title   String
+  body    String @db.Text
+
+  published Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+/// The "Deals of the Month" block on the home page, including its countdown.
+model Deal {
+  id       String  @id @default(cuid())
+  title    String
+  body     String? @db.Text
+  imageUrl String?
+
+  /// What the countdown counts down to. Past this the block stops showing a
+  /// clock rather than counting upward.
+  endsAt DateTime
+
+  ctaLabel String  @default("View all products")
+  ctaHref  String  @default("/shop")
+  active   Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([active])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+/// Instagram-style stories section on the home page and admin dashboard.
+model Story {
+  id          String   @id @default(cuid())
+  title       String
+  brandHandle String   @default("@kidoclassic")
+  coverImage  String
+  active      Boolean  @default(true)
+  position    Int      @default(0)
+
+  slides StoryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([position])
+}
+
+/// Individual slide/item inside a Story. Can attach a store Product.
+model StoryItem {
+  id          String    @id @default(cuid())
+  storyId     String
+  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  mediaUrl    String
+  mediaType   MediaType @default(IMAGE)
+  caption     String?
+  durationSec Int       @default(5)
+  position    Int       @default(0)
+
+  productId String?
+  product   Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([storyId])
+  @@index([productId])
+  @@index([position])
+}
+
+/// The four promises under the home page, and the footer link columns.
+/// Editable so the copy cannot drift from what the shop actually offers —
+/// the free-delivery line in particular has to match StoreSettings.
+model ValueProp {
+  id       String @id @default(cuid())
+  icon     String @default("truck")
+  title    String
+  body     String
+  position Int    @default(0)
+  active   Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([active, position])
+}
+
+/// A link in one of the footer columns.
+model FooterLink {
+  id    String @id @default(cuid())
+  /// "information" or "service" — which column it belongs to.
+  column   String
+  label    String
+  href     String
+  position Int    @default(0)
+  active   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@index([column, position])
 }

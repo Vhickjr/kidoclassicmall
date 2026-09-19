@@ -1,39 +1,45 @@
-import { BadgeDollarSign, CreditCard, Headphones, Truck } from "lucide-react";
+import {
+  BadgeDollarSign,
+  CreditCard,
+  Headphones,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+} from "lucide-react";
+import { valueProps } from "@/lib/site-content";
 
-const VALUE_PROPS = [
-  {
-    icon: Truck,
-    title: "Free Shipping",
-    body: "Free shipping on orders above ₦150,000",
-  },
-  {
-    icon: BadgeDollarSign,
-    title: "Money Guarantee",
-    body: "Within 30 days for an exchange",
-  },
-  {
-    icon: Headphones,
-    title: "Online Support",
-    body: "24 hours a day, 7 days a week",
-  },
-  {
-    icon: CreditCard,
-    title: "Flexible Payment",
-    body: "Pay with multiple cards and transfers",
-  },
-];
+/** Icon names the admin can choose from, kept small on purpose. */
+export const VALUE_PROP_ICONS = {
+  truck: Truck,
+  badge: BadgeDollarSign,
+  headphones: Headphones,
+  card: CreditCard,
+  shield: ShieldCheck,
+  returns: RotateCcw,
+  sparkle: Sparkles,
+} as const;
 
-export default function ValueProps() {
+export type ValuePropIcon = keyof typeof VALUE_PROP_ICONS;
+
+export default async function ValueProps() {
+  const props = await valueProps();
+
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-14">
       <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-        {VALUE_PROPS.map((prop) => (
-          <li key={prop.title}>
-            <prop.icon aria-hidden className="size-6" />
-            <h3 className="mt-3 text-sm font-semibold">{prop.title}</h3>
-            <p className="mt-1 text-sm text-muted">{prop.body}</p>
-          </li>
-        ))}
+        {props.map((prop) => {
+          const Icon =
+            VALUE_PROP_ICONS[prop.icon as ValuePropIcon] ?? Truck;
+
+          return (
+            <li key={prop.title}>
+              <Icon aria-hidden className="size-6 text-brand-deep" />
+              <h3 className="mt-3 text-sm font-semibold">{prop.title}</h3>
+              <p className="mt-1 text-sm text-muted">{prop.body}</p>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

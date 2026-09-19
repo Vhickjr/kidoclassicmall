@@ -14,15 +14,69 @@ const STATUS_STYLE: Record<string, string> = {
   ARCHIVED: "bg-line text-muted",
 };
 
-export default async function AdminProductsPage() {
+const SORTS = {
+  newest: { label: "Newest first", orderBy: { createdAt: "desc" as const } },
+  oldest: { label: "Oldest first", orderBy: { createdAt: "asc" as const } },
+  name: { label: "Name, A to Z", orderBy: { name: "asc" as const } },
+  updated: { label: "Recently updated", orderBy: { updatedAt: "desc" as const } },
+};
+
+type SortKey = keyof typeof SORTS;
+
+export default async function AdminProductsPage({
+  searchParams,
+}: PageProps<"/admin/products">) {
   // The gate has to sit here, not only in the layout. A layout returning early
   // does not stop its child page running, and the page's output still reaches
   // the client in the RSC payload — customer emails included.
   if (!(await requireAdmin())) return null;
 
-  const products = await getPrisma().product.findMany({
-    include: { variants: true, category: true },
-    orderBy: { createdAt: "desc" },
+  const params = await searchParams;
+  const query = typeof params.q === "string" ? params.q.trim() : "";
+  const status = typeof params.status === "string" ? params.status : "";
+  const categoryId = typeof params.category === "string" ? params.category : "";
+  const stock = typeof params.stock === "string" ? params.stock : "";
+  const sort: SortKey =
+    typeof params.sort === "string" && params.sort in SORTS
+      ? (params.sort as SortKey)
+      : "newest";
+
+  const prisma = getPrisma();
+
+  const [all, categories] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        ...(query
+          ? {
+              OR: [
+                { name: { contains: query } },
+                { brand: { contains: query } },
+                { slug: { contains: query } },
+              ],
+            }
+          : {}),
+        ...(status
+          ? { status: status as "DRAFT" | "PUBLISHED" | "ARCHIVED" }
+          : {}),
+        ...(categoryId
+          ? categoryId === "none"
+            ? { categoryId: null }
+            : { categoryId }
+          : {}),
+      },
+      include: { variants: true, category: true },
+      orderBy: SORTS[sort].orderBy,
+    }),
+    prisma.category.findMany({ orderBy: { name: "asc" } }),
+  ]);
+
+  // Stock lives across variants, so that filter is applied here rather than in SQL.
+  const products = all.filter((product) => {
+    if (!stock) return true;
+    const total = product.variants.reduce((sum, v) => sum + v.stock, 0);
+    if (stock === "out") return total === 0;
+    if (stock === "low") return total > 0 && total <= 5;
+    return true;
   });
 
   return (
@@ -38,8 +92,73 @@ export default async function AdminProductsPage() {
         </Link>
       </div>
 
+      <form className="mt-6 flex flex-wrap items-end gap-3">
+        <label className="min-w-48 flex-1">
+          <span className="text-xs text-muted">Search</span>
+          <input
+            name="q"
+            defaultValue={query}
+            placeholder="Name, brand or slug"
+            className="mt-1.5 w-full border border-line px-3 py-2 text-sm outline-none focus:border-brand"
+          />
+        </label>
+
+        <label className="w-36">
+          <span className="text-xs text-muted">Status</span>
+          <select name="status" defaultValue={status} className="mt-1.5 w-full border border-line px-2 py-2 text-sm">
+            <option value="">All</option>
+            <option value="PUBLISHED">Published</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+        </label>
+
+        <label className="w-40">
+          <span className="text-xs text-muted">Category</span>
+          <select name="category" defaultValue={categoryId} className="mt-1.5 w-full border border-line px-2 py-2 text-sm">
+            <option value="">All</option>
+            <option value="none">Uncategorised</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="w-36">
+          <span className="text-xs text-muted">Stock</span>
+          <select name="stock" defaultValue={stock} className="mt-1.5 w-full border border-line px-2 py-2 text-sm">
+            <option value="">Any</option>
+            <option value="low">Low (1-5)</option>
+            <option value="out">Sold out</option>
+          </select>
+        </label>
+
+        <label className="w-40">
+          <span className="text-xs text-muted">Sort</span>
+          <select name="sort" defaultValue={sort} className="mt-1.5 w-full border border-line px-2 py-2 text-sm">
+            {Object.entries(SORTS).map(([key, value]) => (
+              <option key={key} value={key}>{value.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <button type="submit" className="bg-brand px-5 py-2 text-sm text-white">
+          Apply
+        </button>
+
+        {(query || status || categoryId || stock || sort !== "newest") && (
+          <Link href="/admin/products" className="py-2 text-sm underline">
+            Clear
+          </Link>
+        )}
+      </form>
+
+      <p className="mt-4 text-sm text-muted">
+        {products.length} {products.length === 1 ? "product" : "products"}
+      </p>
+
       {products.length === 0 ? (
-        <p className="mt-8 text-muted">No products yet.</p>
+        <p className="mt-8 text-muted">Nothing matches those filters.</p>
       ) : (
         <ul className="mt-8 divide-y divide-line border-y border-line">
           {products.map((product) => {

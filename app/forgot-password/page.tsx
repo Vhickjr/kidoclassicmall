@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <AuthSplit photoSeed="auth-forgot">
+    <AuthSplit>
       <Link
         href="/login"
         className="inline-flex items-center gap-1.5 text-sm hover:text-muted"

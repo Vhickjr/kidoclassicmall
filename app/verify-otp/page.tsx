@@ -16,7 +16,7 @@ export default async function VerifyOtpPage({
   if (!email) redirect("/forgot-password");
 
   return (
-    <AuthSplit photoSeed="auth-otp">
+    <AuthSplit>
       <OtpPanel email={email} />
     </AuthSplit>
   );

@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 type IncomingVariant = {
   size: string;
   color?: string | null;
+  customOptions?: Record<string, string> | unknown;
   priceKobo: number;
   stock: number;
   sku?: string | null;
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
           create: variants.map((v) => ({
             size: v.size.trim(),
             color: v.color?.trim() || null,
+            customOptions: (v.customOptions as any) ?? null,
             priceKobo: v.priceKobo,
             stock: v.stock,
             sku: v.sku?.trim() || null,
