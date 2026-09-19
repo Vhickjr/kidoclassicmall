@@ -30,5 +30,10 @@
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "mariadb": "3.4.7",
+    "mysql2": "^3.22.0",
+    "deepmerge-ts": "^8.0.0"
   }
 }
