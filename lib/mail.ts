@@ -30,6 +30,11 @@ function getTransporter(): Transporter | null {
     port,
     secure: port === 465,
     auth: { user, pass },
+    // Without these a mail server that accepts the connection and then goes
+    // quiet holds the request open indefinitely. Every send is now bounded.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
 
   return globalForMail.mailer;
@@ -40,6 +45,76 @@ function getTransporter(): Transporter | null {
 // ---------------------------------------------------------------------------
 function from(): string {
   return `"Kidoclassic Mall" <${process.env.SMTP_USER}>`;
+}
+
+/**
+ * Whether outbound email can work at all, and why not if it cannot.
+ *
+ * Exists because the usual failure is invisible: `.env` is a local file and is
+ * never deployed, so if the SMTP variables were not also set in the host's
+ * panel every email silently fails in production while working perfectly on
+ * the developer's machine.
+ */
+export function emailStatus(): {
+  configured: boolean;
+  host: string | null;
+  port: number;
+  user: string | null;
+  missing: string[];
+} {
+  const missing = (["SMTP_HOST", "SMTP_USER", "SMTP_PASS"] as const).filter(
+    (key) => !process.env[key]
+  );
+
+  return {
+    configured: missing.length === 0,
+    host: process.env.SMTP_HOST ?? null,
+    port: Number(process.env.SMTP_PORT) || 465,
+    user: process.env.SMTP_USER ?? null,
+    missing,
+  };
+}
+
+/** Opens a connection and authenticates, without sending anything. */
+export async function verifyEmailConnection(): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  const status = emailStatus();
+  if (!status.configured) {
+    return { ok: false, error: `Not configured: ${status.missing.join(", ")} missing.` };
+  }
+
+  try {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: "No transport available." };
+    await transporter.verify();
+    return { ok: true };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message.split("\n")[0] : String(error);
+    return { ok: false, error: detail };
+  }
+}
+
+/** Sends a plain test message, for checking a live deployment. */
+export async function sendTestEmail(
+  to: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await send(
+      to,
+      "Kidoclassic email test",
+      brandedHtml(
+        `<p style="margin:0;font-size:15px;color:#555555;line-height:1.5;">
+           This is a test from your shop. If it arrived, order receipts and
+           password resets can reach your customers too.
+         </p>`
+      )
+    );
+    return { ok: true };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message.split("\n")[0] : String(error);
+    return { ok: false, error: detail };
+  }
 }
 
 /** Wrap body content in the branded shell used by every transactional email. */

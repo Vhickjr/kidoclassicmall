@@ -9,6 +9,7 @@ import { destroySession, requireAdmin } from "@/lib/auth";
 import { imageList, nairaToKobo, slugify } from "@/lib/format";
 import { destroyRemoved, destroyUploads } from "@/lib/cloudinary";
 import { sendPaidReceiptOnce } from "@/lib/receipts";
+import { sendTestEmail } from "@/lib/mail";
 import { sendAbandonedFollowUp } from "@/lib/abandoned";
 import { removePurchasedFromBasket } from "@/lib/basket-settle";
 
@@ -233,6 +234,33 @@ export async function deleteVariant(formData: FormData) {
   refresh();
 }
 
+export async function deleteProduct(formData: FormData) {
+  const prisma = await guard();
+  const id = text(formData, "productId");
+
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: { images: true, videoUrl: true },
+  });
+  if (!product) return;
+
+  try {
+    // ProductVariant cascades from Product, but OrderItem has onDelete:
+    // Restrict on the variant it belongs to — so this throws, rather than
+    // silently deleting, the moment any variant has ever actually sold.
+    // Archiving (already available from the status dropdown) is the right
+    // move for a product with history; this is for a mistaken upload or a
+    // duplicate that never sold anything.
+    await prisma.product.delete({ where: { id } });
+  } catch (error) {
+    console.error("deleteProduct refused — this product has order history", error);
+    return;
+  }
+
+  await destroyUploads([...imageList(product.images), product.videoUrl]);
+  refresh();
+}
+
 export async function createCategory(formData: FormData) {
   const prisma = await guard();
   const name = text(formData, "name");
@@ -245,6 +273,39 @@ export async function createCategory(formData: FormData) {
       imageUrl: text(formData, "imageUrl") || null,
     },
   });
+
+  refresh();
+}
+
+export async function updateCategory(formData: FormData) {
+  const prisma = await guard();
+
+  const id = text(formData, "categoryId");
+  const name = text(formData, "name");
+  if (!name) return;
+
+  // The slug is never touched here — it is how /shop?category=<slug> and any
+  // link built from it stay working. Fixing a typo in the display name must
+  // not quietly break a bookmark or a shared link.
+  const rawImage = formData.get("imageUrl");
+  const imageUrl = rawImage === null ? undefined : String(rawImage).trim() || null;
+
+  const existing =
+    imageUrl !== undefined
+      ? await prisma.category.findUnique({ where: { id }, select: { imageUrl: true } })
+      : null;
+
+  await prisma.category.update({
+    where: { id },
+    data: {
+      name,
+      ...(imageUrl === undefined ? {} : { imageUrl }),
+    },
+  });
+
+  // After the write: a failed update must not delete a picture the category
+  // is still showing.
+  if (existing) await destroyRemoved([existing.imageUrl], [imageUrl]);
 
   refresh();
 }
@@ -783,6 +844,23 @@ export async function sendAbandonedFollowUpAction(formData: FormData) {
   const result = await sendAbandonedFollowUp(kind, id, { force: true });
   if (!result.ok) {
     console.error("manual follow-up not sent", kind, id, result.reason);
+  }
+
+  refresh();
+}
+
+/** Sends a test message to the address given, from the admin settings page. */
+export async function sendTestEmailAction(formData: FormData) {
+  await guard();
+
+  const to = text(formData, "to");
+  if (!to) return;
+
+  const result = await sendTestEmail(to);
+  if (result.ok) {
+    console.log("test email sent to", to);
+  } else {
+    console.error("test email failed:", result.error);
   }
 
   refresh();

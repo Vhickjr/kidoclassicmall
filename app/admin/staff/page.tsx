@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUser, requireSuperAdmin } from "@/lib/auth";
+import PasswordInput from "@/app/_components/password-input";
 import { createStaff, setUserActive, setUserRole } from "@/app/_actions/staff";
 
 export const metadata: Metadata = { title: "Staff & roles" };
@@ -69,13 +70,14 @@ export default async function AdminStaffPage() {
         </label>
         <label className="min-w-40 flex-1">
           <span className="text-xs text-muted">Password (min 8)</span>
-          <input
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            className="mt-1.5 w-full border border-line px-3 py-2.5 text-sm"
-          />
+          <span className="mt-1.5 block">
+            <PasswordInput
+              name="password"
+              required
+              minLength={8}
+              className="w-full border border-line px-3 py-2.5 text-sm"
+            />
+          </span>
         </label>
         <label className="w-40">
           <span className="text-xs text-muted">Role</span>

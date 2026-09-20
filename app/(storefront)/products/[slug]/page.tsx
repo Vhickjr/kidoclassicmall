@@ -11,6 +11,7 @@ import ValueProps from "@/app/_components/value-props";
 import Gallery from "./gallery";
 import BuyPanel from "./buy-panel";
 import ProductTabs from "./product-tabs";
+import SizeChart from "@/app/_components/size-chart";
 
 async function getPublishedProduct(slug: string) {
   const product = await getPrisma().product.findUnique({
@@ -109,7 +110,11 @@ export default async function ProductPage({
           alt={product.name}
         />
 
-        <div>
+        {/* `min-w-0` so this column can shrink below the width of its widest
+            child. Without it the size chart's table — deliberately wider than a
+            phone — stretches the grid column and pushes the whole page
+            sideways, instead of scrolling inside its own box. */}
+        <div className="min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div>
               {product.brand && (
@@ -147,6 +152,8 @@ export default async function ProductPage({
               stock: variant.stock,
             }))}
           />
+
+          <SizeChart />
         </div>
       </div>
 

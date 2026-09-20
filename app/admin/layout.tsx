@@ -21,6 +21,7 @@ import {
 import Logo from "@/app/_components/logo";
 import MobileNav from "@/app/_components/mobile-nav";
 import { requireAdmin } from "@/lib/auth";
+import PasswordInput from "@/app/_components/password-input";
 import { signInAdmin, signOutAdmin } from "@/app/_actions/admin";
 
 const NAV = [
@@ -56,12 +57,12 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <form action={signInAdmin} className="mt-6">
           <label className="block">
             <span className="text-xs text-muted">Admin secret</span>
-            <input
-              name="secret"
-              type="password"
-              autoComplete="off"
-              className="mt-1.5 w-full rounded-lg border border-foreground px-4 py-3 text-sm outline-none"
-            />
+            <span className="mt-1.5 block">
+              <PasswordInput
+                name="secret"
+                className="w-full rounded-lg border border-foreground px-4 py-3 text-sm outline-none"
+              />
+            </span>
           </label>
           <button
             type="submit"

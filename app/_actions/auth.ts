@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { getPrisma } from "@/lib/prisma";
 import {
@@ -62,10 +63,18 @@ export async function signUp(
 
   await createSession(user.id);
 
-  // Send verification email in the background
+  // Sent after the response, and never allowed to fail the signup: the account
+  // exists either way, and a customer who cannot be emailed can still ask for
+  // the verification link again from their account page.
   const token = await generateEmailVerificationToken(user.id);
   const baseUrl = await getBaseUrl();
-  await sendVerificationEmail(email, `${baseUrl}/verify-email?token=${token}`);
+  after(async () => {
+    try {
+      await sendVerificationEmail(email, `${baseUrl}/verify-email?token=${token}`);
+    } catch (error) {
+      console.error("verification email failed to send", email, error);
+    }
+  });
 
   revalidatePath("/", "layout");
   redirect("/account");
@@ -111,7 +120,15 @@ export async function requestPasswordReset(
   const user = await getPrisma().user.findUnique({ where: { email } });
   if (user) {
     const code = await createPasswordResetToken(user.id);
-    await sendPasswordResetEmail(email, code);
+    // Off the response path, so a slow mail server cannot leave someone
+    // staring at a spinner on the forgot-password form.
+    after(async () => {
+      try {
+        await sendPasswordResetEmail(email, code);
+      } catch (error) {
+        console.error("password reset email failed to send", email, error);
+      }
+    });
   }
 
   redirect(`/verify-otp?email=${encodeURIComponent(email)}`);

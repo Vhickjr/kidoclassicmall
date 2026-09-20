@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
 import { storeSettings } from "@/lib/settings-store";
+import { MailCheck } from "lucide-react";
+import { emailStatus, verifyEmailConnection } from "@/lib/mail";
 import {
   saveFooterLinks,
   saveStoreSettings,
   saveValueProps,
+  sendTestEmailAction,
 } from "@/app/_actions/admin";
 import { footerLinks, valueProps } from "@/lib/site-content";
 import { VALUE_PROP_ICONS } from "@/app/_components/value-props";
@@ -17,11 +20,16 @@ const naira = (kobo: number) => (kobo / 100).toFixed(2);
 export default async function AdminSettingsPage() {
   if (!(await requireAdmin())) return null;
 
-  const [settings, props, columns] = await Promise.all([
+  const [settings, props, columns, connection] = await Promise.all([
     storeSettings(),
     valueProps(),
     footerLinks(),
+    // Actually opens a connection, so this reports what the live server can
+    // really do rather than just whether the variables look filled in.
+    verifyEmailConnection(),
   ]);
+
+  const email = emailStatus();
 
   // Four slots always render, so an empty one is how you add a promise.
   const slots = [...props, ...Array(4).fill(null)].slice(0, 4);
@@ -220,6 +228,75 @@ export default async function AdminSettingsPage() {
           Save settings
         </button>
       </form>
+
+      <section className="mt-14 border-t border-line pt-10">
+        <h2 className="text-lg font-semibold">Email</h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted">
+          Receipts, password resets and verification links all go out through
+          this. The settings live in the server&rsquo;s own environment
+          variables, not in the site, so a shop can work perfectly in testing
+          and still send nothing once live.
+        </p>
+
+        {email.configured ? (
+          <div className="mt-4 border border-line p-4 text-sm">
+            <p className="flex items-center gap-2 font-semibold text-green-700">
+              <MailCheck aria-hidden className="size-4" />
+              Configured
+            </p>
+            <p className="mt-1 text-muted">
+              Sending as {email.user} through {email.host}:{email.port}
+              {connection.ok ? null : (
+                <>
+                  {" "}
+                  &mdash;{" "}
+                  <span className="text-red-600">
+                    but the server refused the connection: {connection.error}
+                  </span>
+                </>
+              )}
+            </p>
+            {connection.ok && (
+              <p className="mt-1 text-muted">
+                The mail server accepted this login, so sending works.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 border border-red-200 bg-red-50 p-4 text-sm">
+            <p className="font-semibold text-red-700">
+              Not configured &mdash; no email is being sent
+            </p>
+            <p className="mt-1 text-red-700">
+              Missing: {email.missing.join(", ")}. Add these in your hosting
+              panel&rsquo;s environment variables, then restart the app.
+            </p>
+          </div>
+        )}
+
+        <form action={sendTestEmailAction} className="mt-5 flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="text-xs text-muted">Send a test email to</span>
+            <input
+              name="to"
+              type="email"
+              required
+              defaultValue={email.user ?? ""}
+              className="mt-1.5 w-72 border border-line px-4 py-2.5 text-sm outline-none focus:border-brand"
+            />
+          </label>
+          <button
+            type="submit"
+            className="bg-brand px-6 py-2.5 text-sm text-white"
+          >
+            Send test
+          </button>
+        </form>
+        <p className="mt-2 text-xs text-muted">
+          Check the inbox, and the spam folder. If it lands in spam, your domain
+          needs SPF and DKIM records.
+        </p>
+      </section>
 
       <section className="mt-14 border-t border-line pt-10">
         <h2 className="text-lg font-semibold">Homepage promises</h2>

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { imageList, koboToNaira } from "@/lib/format";
-import { setProductStatus } from "@/app/_actions/admin";
+import { deleteProduct, setProductStatus } from "@/app/_actions/admin";
+import ConfirmSubmit from "@/app/_components/confirm-submit";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -229,6 +230,18 @@ export default async function AdminProductsPage({
                   <button type="submit" className="text-sm underline">
                     Set
                   </button>
+                </form>
+
+                <form action={deleteProduct}>
+                  <input type="hidden" name="productId" value={product.id} />
+                  <ConfirmSubmit
+                    ariaLabel={`Delete ${product.name}`}
+                    message={`Delete "${product.name}" permanently? This cannot be undone. A product that has ever sold cannot be deleted — archive it instead.`}
+                    className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 aria-hidden className="size-3.5" />
+                    Delete
+                  </ConfirmSubmit>
                 </form>
               </li>
             );

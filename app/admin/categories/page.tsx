@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Trash2 } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { createCategory, deleteCategory } from "@/app/_actions/admin";
+import { createCategory, deleteCategory, updateCategory } from "@/app/_actions/admin";
 import ImageUploader from "@/app/_components/image-uploader";
 
 export const metadata: Metadata = { title: "Categories" };
@@ -51,32 +51,53 @@ export default async function AdminCategoriesPage() {
       ) : (
         <ul className="mt-8 divide-y divide-line border-y border-line">
           {categories.map((category) => (
-            <li
-              key={category.id}
-              className="flex flex-wrap items-center gap-4 py-4"
-            >
-              {category.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={category.imageUrl}
-                  alt=""
-                  className="size-12 shrink-0 bg-brand-soft/40 object-cover"
-                />
-              ) : (
-                <span className="size-12 shrink-0 bg-brand-soft/40" />
-              )}
+            <li key={category.id} className="py-4">
+              <form
+                action={updateCategory}
+                className="flex flex-wrap items-end gap-4"
+              >
+                <input type="hidden" name="categoryId" value={category.id} />
 
-              <div className="min-w-40 flex-1">
-                <p className="text-sm font-semibold">{category.name}</p>
-                <p className="mt-0.5 text-sm text-muted">/{category.slug}</p>
-              </div>
+                <div className="w-24 shrink-0">
+                  <span className="text-xs text-muted">Image</span>
+                  <div className="mt-1.5">
+                    <ImageUploader
+                      name="imageUrl"
+                      multiple={false}
+                      initial={category.imageUrl ? [category.imageUrl] : []}
+                    />
+                  </div>
+                </div>
 
-              <span className="text-sm text-muted">
-                {category._count.products}{" "}
-                {category._count.products === 1 ? "product" : "products"}
-              </span>
+                <label className="min-w-40 flex-1">
+                  <span className="text-xs text-muted">Name</span>
+                  <input
+                    name="name"
+                    required
+                    defaultValue={category.name}
+                    className="mt-1.5 w-full border border-line px-4 py-2.5 text-sm outline-none focus:border-brand"
+                  />
+                  {/* The slug is fixed once created, so a rename here never
+                      breaks a bookmarked /shop?category= link. */}
+                  <span className="mt-0.5 block text-xs text-muted">
+                    /{category.slug}
+                  </span>
+                </label>
 
-              <form action={deleteCategory}>
+                <span className="self-center pb-2.5 text-sm text-muted">
+                  {category._count.products}{" "}
+                  {category._count.products === 1 ? "product" : "products"}
+                </span>
+
+                <button
+                  type="submit"
+                  className="self-center bg-brand px-5 py-2.5 text-sm text-white"
+                >
+                  Save
+                </button>
+              </form>
+
+              <form action={deleteCategory} className="mt-2">
                 <input type="hidden" name="categoryId" value={category.id} />
                 <button
                   type="submit"
