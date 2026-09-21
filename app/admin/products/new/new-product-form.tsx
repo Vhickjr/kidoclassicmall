@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { nairaToKobo } from "@/lib/format";
+import { useMemo, useRef, useState } from "react";
+import { colorSwatch, nairaToKobo } from "@/lib/format";
 import ImageUploader from "@/app/_components/image-uploader";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -11,12 +11,24 @@ const SIZE_SETS: Record<string, string[]> = {
   "One size": ["One size"],
 };
 
+/** Offered up front, the same way sizes are. Denim washes sit alongside the
+ *  plain colours because that is how this shop's stock is actually described. */
+const COLOR_PRESETS = [
+  "Black", "White", "Cream", "Grey", "Red", "Burgundy", "Pink",
+  "Blue", "Light wash", "Mid wash", "Dark wash", "Indigo", "Tan", "Brown",
+];
+
 type Row = {
   price: string;
   stock: string;
-  color?: string;
   customOptions?: Record<string, string>;
 };
+
+/** One line of stock is a size and a colour together, so the key has to carry
+ *  both. A product with no colours chosen keys on the size alone. */
+function rowKey(size: string, color: string | null): string {
+  return color ? `${size}\u0000${color}` : size;
+}
 
 export default function NewProductForm({
   categories,
@@ -33,6 +45,10 @@ export default function NewProductForm({
   const [customSize, setCustomSize] = useState("");
   const [extraSizes, setExtraSizes] = useState<string[]>([]);
 
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [customColor, setCustomColor] = useState("");
+  const [extraColors, setExtraColors] = useState<string[]>([]);
+
   // Custom Variation Field Names (e.g. ["Material", "Style"])
   const [customFieldNames, setCustomFieldNames] = useState<string[]>([]);
   const [newFieldName, setNewFieldName] = useState("");
@@ -40,6 +56,10 @@ export default function NewProductForm({
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [bulkPrice, setBulkPrice] = useState("");
   const [bulkStock, setBulkStock] = useState("");
+
+  // This form saves with its own fetch rather than a form submit, so it has to
+  // flush the picker's pending files itself before sending anything.
+  const uploadImagesRef = useRef<null | (() => Promise<string[]>)>(null);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +69,22 @@ export default function NewProductForm({
     () => [...SIZE_SETS[setName_], ...extraSizes],
     [setName_, extraSizes]
   );
+
+  const availableColors = useMemo(
+    () => [...COLOR_PRESETS, ...extraColors],
+    [extraColors]
+  );
+
+  /** Every size crossed with every chosen colour. With no colours chosen this
+   *  is just the sizes, so a product that does not vary by colour is unchanged. */
+  const combos = useMemo(() => {
+    if (selectedColors.length === 0) {
+      return selected.map((size) => ({ size, color: null as string | null }));
+    }
+    return selected.flatMap((size) =>
+      selectedColors.map((color) => ({ size, color: color as string | null }))
+    );
+  }, [selected, selectedColors]);
 
   function toggleSize(size: string) {
     setSelected((prev) => {
@@ -102,24 +138,41 @@ export default function NewProductForm({
     });
   }
 
-  function updateRowField(size: string, field: "price" | "stock" | "color", value: string) {
+  function updateRowField(key: string, field: "price" | "stock", value: string) {
     setRows((prev) => ({
       ...prev,
-      [size]: { ...(prev[size] ?? { price: "", stock: "" }), [field]: value },
+      [key]: { ...(prev[key] ?? { price: "", stock: "" }), [field]: value },
     }));
   }
 
-  function updateRowCustomOption(size: string, key: string, value: string) {
+  function updateRowCustomOption(key: string, field: string, value: string) {
     setRows((prev) => {
-      const currentOpts = prev[size]?.customOptions ?? {};
+      const currentOpts = prev[key]?.customOptions ?? {};
       return {
         ...prev,
-        [size]: {
-          ...(prev[size] ?? { price: "", stock: "" }),
-          customOptions: { ...currentOpts, [key]: value },
+        [key]: {
+          ...(prev[key] ?? { price: "", stock: "" }),
+          customOptions: { ...currentOpts, [field]: value },
         },
       };
     });
+  }
+
+  function toggleColor(color: string) {
+    setSelectedColors((prev) =>
+      prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
+    );
+  }
+
+  function addCustomColor() {
+    const value = customColor.trim();
+    if (!value || availableColors.includes(value)) {
+      setCustomColor("");
+      return;
+    }
+    setExtraColors((prev) => [...prev, value]);
+    setSelectedColors((prev) => [...prev, value]);
+    setCustomColor("");
   }
 
   async function save(status: "DRAFT" | "PUBLISHED") {
@@ -130,13 +183,16 @@ export default function NewProductForm({
     if (selected.length === 0) return setError("Pick at least one size.");
 
     const variants = [];
-    for (const size of selected) {
-      const row = rows[size] ?? { price: "", stock: "" };
+    for (const { size, color } of combos) {
+      const key = rowKey(size, color);
+      const label = color ? `${size} / ${color}` : size;
+      const row = rows[key] ?? { price: "", stock: "" };
+
       const priceKobo = nairaToKobo(row.price);
-      if (priceKobo === null) return setError(`Set a valid price for size ${size}.`);
+      if (priceKobo === null) return setError(`Set a valid price for ${label}.`);
       const stock = parseInt(row.stock || "0", 10);
       if (Number.isNaN(stock) || stock < 0)
-        return setError(`Set a valid stock count for size ${size}.`);
+        return setError(`Set a valid stock count for ${label}.`);
 
       // Clean up empty custom option values
       const cleanCustomOptions: Record<string, string> = {};
@@ -150,7 +206,7 @@ export default function NewProductForm({
 
       variants.push({
         size,
-        color: row.color?.trim() || null,
+        color,
         customOptions: Object.keys(cleanCustomOptions).length > 0 ? cleanCustomOptions : null,
         priceKobo,
         stock,
@@ -159,6 +215,17 @@ export default function NewProductForm({
 
     setSaving(true);
     try {
+      // Pictures go to Cloudinary now, at save time, not when they were picked.
+      let images = imagesRaw.split("\n").map((line) => line.trim()).filter(Boolean);
+      if (uploadImagesRef.current) {
+        try {
+          images = await uploadImagesRef.current();
+        } catch {
+          setSaving(false);
+          return setError("Could not upload the pictures. Nothing was saved.");
+        }
+      }
+
       const response = await fetch("/api/admin/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -167,10 +234,8 @@ export default function NewProductForm({
           description,
           status,
           categoryId: categoryId || null,
-          images: imagesRaw
-            .split(/[\n,]/)
-            .map((s) => s.trim())
-            .filter(Boolean),
+          // The URLs the upload just returned, not the stale state value.
+          images,
           variants,
         }),
       });
@@ -262,6 +327,9 @@ export default function NewProductForm({
             <ImageUploader
               initial={imagesRaw.split("\n").filter(Boolean)}
               onChange={(urls) => setImagesRaw(urls.join("\n"))}
+              onRegisterUpload={(upload) => {
+                uploadImagesRef.current = upload;
+              }}
             />
           </div>
 
@@ -339,6 +407,73 @@ export default function NewProductForm({
             Add
           </button>
         </div>
+
+        {/* Colours are chosen here, the same way sizes are, and every chosen
+            colour is paired with every chosen size below. Leaving this empty
+            gives one line of stock per size, as before. */}
+        <h3 className="mt-8 text-sm font-semibold">Colours</h3>
+        <p className="mt-1 text-sm text-neutral-600">
+          Optional. Each colour you pick is combined with each size, so you can
+          price and count them separately.
+        </p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {availableColors.map((color) => {
+            const on = selectedColors.includes(color);
+            return (
+              <button
+                key={color}
+                type="button"
+                onClick={() => toggleColor(color)}
+                aria-pressed={on}
+                className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-sm ${
+                  on
+                    ? "border-neutral-900 bg-neutral-900 text-white"
+                    : "border-neutral-300 hover:border-neutral-900"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className="size-3 rounded-full ring-1 ring-black/20"
+                  style={{ backgroundColor: colorSwatch(color) }}
+                />
+                {color}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 flex gap-2">
+          <input
+            value={customColor}
+            onChange={(e) => setCustomColor(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustomColor();
+              }
+            }}
+            placeholder="Add another colour"
+            className="w-48 rounded border border-neutral-300 px-3 py-1.5 text-sm focus:border-neutral-900 focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={addCustomColor}
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm hover:border-neutral-900"
+          >
+            Add
+          </button>
+        </div>
+
+        {selected.length > 0 && selectedColors.length > 0 && (
+          <p className="mt-3 text-sm text-neutral-600">
+            {selected.length} {selected.length === 1 ? "size" : "sizes"} &times;{" "}
+            {selectedColors.length}{" "}
+            {selectedColors.length === 1 ? "colour" : "colours"} ={" "}
+            <strong>{selected.length * selectedColors.length}</strong> lines of
+            stock to price below.
+          </p>
+        )}
       </section>
 
       {/* Custom Variation Fields Creator */}
@@ -433,7 +568,7 @@ export default function NewProductForm({
               <thead>
                 <tr className="border-b border-neutral-200 text-left text-xs text-neutral-600">
                   <th className="pb-2 font-medium">Size</th>
-                  <th className="pb-2 font-medium">Color (optional)</th>
+                  <th className="pb-2 font-medium">Colour</th>
                   {customFieldNames.map((fn) => (
                     <th key={fn} className="pb-2 font-medium">{fn}</th>
                   ))}
@@ -442,45 +577,56 @@ export default function NewProductForm({
                 </tr>
               </thead>
               <tbody>
-                {selected.map((size) => (
-                  <tr key={size} className="border-b border-neutral-100">
-                    <td className="py-2.5 font-semibold">{size}</td>
-                    <td className="py-2.5">
-                      <input
-                        placeholder="e.g. Black"
-                        value={rows[size]?.color ?? ""}
-                        onChange={(e) => updateRowField(size, "color", e.target.value)}
-                        className="w-28 rounded border border-neutral-300 px-2 py-1 text-sm focus:border-neutral-900 focus:outline-none"
-                      />
-                    </td>
-                    {customFieldNames.map((fn) => (
-                      <td key={fn} className="py-2.5">
+                {combos.map(({ size, color }) => {
+                  const key = rowKey(size, color);
+                  const label = color ? `${size} / ${color}` : size;
+
+                  return (
+                    <tr key={key} className="border-b border-neutral-100">
+                      <td className="py-2.5 font-semibold">{size}</td>
+                      <td className="py-2.5">
+                        {color ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              aria-hidden
+                              className="size-3 rounded-full ring-1 ring-black/10"
+                              style={{ backgroundColor: colorSwatch(color) }}
+                            />
+                            {color}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-400">&mdash;</span>
+                        )}
+                      </td>
+                      {customFieldNames.map((fn) => (
+                        <td key={fn} className="py-2.5">
+                          <input
+                            placeholder={`Value for ${fn}`}
+                            value={rows[key]?.customOptions?.[fn] ?? ""}
+                            onChange={(e) => updateRowCustomOption(key, fn, e.target.value)}
+                            className="w-32 rounded border border-neutral-300 px-2 py-1 text-sm focus:border-neutral-900 focus:outline-none"
+                          />
+                        </td>
+                      ))}
+                      <td className="py-2.5">
                         <input
-                          placeholder={`Value for ${fn}`}
-                          value={rows[size]?.customOptions?.[fn] ?? ""}
-                          onChange={(e) => updateRowCustomOption(size, fn, e.target.value)}
-                          className="w-32 rounded border border-neutral-300 px-2 py-1 text-sm focus:border-neutral-900 focus:outline-none"
+                          aria-label={`Price for ${label}`}
+                          value={rows[key]?.price ?? ""}
+                          onChange={(e) => updateRowField(key, "price", e.target.value)}
+                          className="w-28 rounded border border-neutral-300 px-2 py-1 text-sm focus:border-neutral-900 focus:outline-none"
                         />
                       </td>
-                    ))}
-                    <td className="py-2.5">
-                      <input
-                        aria-label={`Price for size ${size}`}
-                        value={rows[size]?.price ?? ""}
-                        onChange={(e) => updateRowField(size, "price", e.target.value)}
-                        className="w-28 rounded border border-neutral-300 px-2 py-1 text-sm focus:border-neutral-900 focus:outline-none"
-                      />
-                    </td>
-                    <td className="py-2.5">
-                      <input
-                        aria-label={`Stock for size ${size}`}
-                        value={rows[size]?.stock ?? ""}
-                        onChange={(e) => updateRowField(size, "stock", e.target.value)}
-                        className="w-20 rounded border border-neutral-300 px-2 py-1 text-sm focus:border-neutral-900 focus:outline-none"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                      <td className="py-2.5">
+                        <input
+                          aria-label={`Stock for ${label}`}
+                          value={rows[key]?.stock ?? ""}
+                          onChange={(e) => updateRowField(key, "stock", e.target.value)}
+                          className="w-20 rounded border border-neutral-300 px-2 py-1 text-sm focus:border-neutral-900 focus:outline-none"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

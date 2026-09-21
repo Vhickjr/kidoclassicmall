@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { storeSettings } from "@/lib/settings-store";
 import { MailCheck } from "lucide-react";
 import { emailStatus, verifyEmailConnection } from "@/lib/mail";
+import { uploadStatus } from "@/lib/cloudinary";
 import {
   saveFooterLinks,
   saveStoreSettings,
@@ -12,6 +13,7 @@ import {
 import { footerLinks, valueProps } from "@/lib/site-content";
 import { VALUE_PROP_ICONS } from "@/app/_components/value-props";
 import ImageUploader from "@/app/_components/image-uploader";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Store settings" };
 
@@ -30,6 +32,7 @@ export default async function AdminSettingsPage() {
   ]);
 
   const email = emailStatus();
+  const uploads = uploadStatus();
 
   // Four slots always render, so an empty one is how you add a promise.
   const slots = [...props, ...Array(4).fill(null)].slice(0, 4);
@@ -221,12 +224,7 @@ export default async function AdminSettingsPage() {
           />
         </label>
 
-        <button
-          type="submit"
-          className="mt-8 bg-brand px-8 py-3 text-sm text-white"
-        >
-          Save settings
-        </button>
+        <SubmitButton variant="primary" className="mt-8">Save settings</SubmitButton>
       </form>
 
       <section className="mt-14 border-t border-line pt-10">
@@ -285,17 +283,38 @@ export default async function AdminSettingsPage() {
               className="mt-1.5 w-72 border border-line px-4 py-2.5 text-sm outline-none focus:border-brand"
             />
           </label>
-          <button
-            type="submit"
-            className="bg-brand px-6 py-2.5 text-sm text-white"
-          >
-            Send test
-          </button>
+          <SubmitButton variant="primary">Send test</SubmitButton>
         </form>
         <p className="mt-2 text-xs text-muted">
           Check the inbox, and the spam folder. If it lands in spam, your domain
           needs SPF and DKIM records.
         </p>
+
+        <h2 className="mt-12 text-lg font-semibold">Image &amp; video uploads</h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted">
+          Photos and product videos go to Cloudinary. These keys also live in
+          the server&rsquo;s environment, so uploads can work on a test machine
+          and fail on the live site.
+        </p>
+
+        {uploads.configured ? (
+          <div className="mt-4 border border-line p-4 text-sm">
+            <p className="font-semibold text-green-700">Configured</p>
+            <p className="mt-1 text-muted">
+              Uploading to the {uploads.cloudName} account.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 border border-red-200 bg-red-50 p-4 text-sm">
+            <p className="font-semibold text-red-700">
+              Not configured &mdash; image and video uploads will fail
+            </p>
+            <p className="mt-1 text-red-700">
+              Missing: {uploads.missing.join(", ")}. Add these in your hosting
+              panel&rsquo;s environment variables, then restart the app.
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="mt-14 border-t border-line pt-10">
@@ -347,12 +366,7 @@ export default async function AdminSettingsPage() {
             </div>
           ))}
 
-          <button
-            type="submit"
-            className="bg-brand px-8 py-3 text-sm text-white"
-          >
-            Save promises
-          </button>
+          <SubmitButton variant="primary">Save promises</SubmitButton>
         </form>
       </section>
 
@@ -393,12 +407,7 @@ export default async function AdminSettingsPage() {
           })}
 
           <div className="md:col-span-2">
-            <button
-              type="submit"
-              className="bg-brand px-8 py-3 text-sm text-white"
-            >
-              Save footer links
-            </button>
+            <SubmitButton variant="primary">Save footer links</SubmitButton>
           </div>
         </form>
       </section>

@@ -26,6 +26,25 @@ export function cloudinaryConfig(): CloudinaryConfig | null {
   return { cloudName, apiKey, apiSecret };
 }
 
+/** Which Cloudinary variables are missing, for the admin settings page.
+ *  Same trap as email: these live in the server's environment, so uploads can
+ *  work perfectly in development and fail silently on the live site. */
+export function uploadStatus(): {
+  configured: boolean;
+  cloudName: string | null;
+  missing: string[];
+} {
+  const missing = (
+    ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"] as const
+  ).filter((key) => !process.env[key]);
+
+  return {
+    configured: missing.length === 0,
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME ?? null,
+    missing,
+  };
+}
+
 export function isCloudinaryConfigured(): boolean {
   return cloudinaryConfig() !== null;
 }

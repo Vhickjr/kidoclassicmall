@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { saveSitePage } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Pages" };
 
@@ -85,12 +86,7 @@ export default async function AdminPagesPage() {
                 Published
               </label>
 
-              <button
-                type="submit"
-                className="mt-6 bg-brand px-8 py-3 text-sm text-white"
-              >
-                Save {template.title}
-              </button>
+              <SubmitButton variant="primary" className="mt-6">Save {template.title}</SubmitButton>
             </form>
           );
         })}

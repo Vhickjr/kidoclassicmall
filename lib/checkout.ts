@@ -59,10 +59,12 @@ export function totalsFor(
   const capped = Math.min(Math.max(0, discountKobo), subtotalKobo);
   const discounted = subtotalKobo - capped;
 
+  // Free delivery is earned by spending over the threshold, not by a discount
+  // code happening to cover the goods. The old `discounted === 0` case gave
+  // away the shipping too, so a flat code worth more than a cheap item made
+  // the whole order — delivery included — come to nothing.
   const deliveryKobo =
-    discounted === 0 || discounted >= delivery.freeDeliveryOverKobo
-      ? 0
-      : delivery.deliveryFlatKobo;
+    discounted >= delivery.freeDeliveryOverKobo ? 0 : delivery.deliveryFlatKobo;
 
   return {
     subtotalKobo,

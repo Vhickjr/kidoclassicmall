@@ -49,12 +49,12 @@ export default async function PaymentMethodPage() {
                 Card details are entered in ALAT Pay&rsquo;s window
               </p>
               <p className="mt-2 leading-relaxed">
-                <b>Card Payment</b>
+                <b>Card Payment:</b> &nbsp;
                 You’ll be securely redirected to ALAT Pay to enter your card details and complete your payment.
                 Your card details are handled securely by ALAT Pay and are not stored by our store.
               </p>
               <p className="mt-2 leading-relaxed">
-                <b>Cash on Delivery</b>
+                <b>Cash on Delivery:</b> &nbsp;
                 Pay when your order is delivered. No online payment is required.
               </p>
             </div>

@@ -94,7 +94,7 @@ export default async function ReviewOrderPage() {
           <Section title="Payment Method" editHref="/checkout/payment">
             <p className="font-semibold">{method?.label}</p>
             <p className="mt-1 text-sm text-muted">
-              Nothing is charged yet — ALAT Pay is not connected.
+              Nothing is charged yet. Click "Place Order" to complete your purchase.
             </p>
           </Section>
         </div>

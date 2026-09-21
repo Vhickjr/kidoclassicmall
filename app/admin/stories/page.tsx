@@ -11,6 +11,7 @@ import {
   deleteStoryItem,
 } from "@/app/_actions/story";
 import ImageUploader from "@/app/_components/image-uploader";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = {
   title: "Instagram Stories Management | Admin",
@@ -105,13 +106,8 @@ export default async function AdminStoriesPage() {
           </div>
 
           <div className="sm:col-span-3 flex justify-end">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition hover:bg-brand-deep"
-            >
-              <Camera className="size-4" />
-              Add Story
-            </button>
+            <SubmitButton variant="primary"><Camera className="size-4" />
+              Add Story</SubmitButton>
           </div>
         </form>
       </div>
@@ -175,13 +171,8 @@ export default async function AdminStoriesPage() {
 
                     <form action={deleteStory}>
                       <input type="hidden" name="id" value={story.id} />
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
-                      >
-                        <Trash2 className="size-3.5" />
-                        Delete Story
-                      </button>
+                      <SubmitButton variant="danger"><Trash2 className="size-3.5" />
+                        Delete Story</SubmitButton>
                     </form>
                   </div>
                 </div>
@@ -240,12 +231,7 @@ export default async function AdminStoriesPage() {
                         <div className="mt-3 flex justify-end border-t border-line/60 pt-2">
                           <form action={deleteStoryItem}>
                             <input type="hidden" name="id" value={slide.id} />
-                            <button
-                              type="submit"
-                              className="text-xs text-red-600 hover:underline inline-flex items-center gap-1"
-                            >
-                              <Trash2 className="size-3" /> Delete Slide
-                            </button>
+                            <SubmitButton variant="danger"><Trash2 className="size-3" /> Delete Slide</SubmitButton>
                           </form>
                         </div>
                       </div>
@@ -322,13 +308,8 @@ export default async function AdminStoriesPage() {
                       </div>
 
                       <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
-                        <button
-                          type="submit"
-                          className="inline-flex items-center gap-1.5 rounded bg-brand px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-deep"
-                        >
-                          <Plus className="size-3.5" />
-                          Add Slide
-                        </button>
+                        <SubmitButton variant="primary"><Plus className="size-3.5" />
+                          Add Slide</SubmitButton>
                       </div>
                     </form>
                   </div>

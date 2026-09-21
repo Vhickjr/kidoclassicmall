@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { imageList, koboToNaira } from "@/lib/format";
 import { deleteProduct, setProductStatus } from "@/app/_actions/admin";
 import ConfirmSubmit from "@/app/_components/confirm-submit";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -143,9 +144,7 @@ export default async function AdminProductsPage({
           </select>
         </label>
 
-        <button type="submit" className="bg-brand px-5 py-2 text-sm text-white">
-          Apply
-        </button>
+        <SubmitButton variant="primary">Apply</SubmitButton>
 
         {(query || status || categoryId || stock || sort !== "newest") && (
           <Link href="/admin/products" className="py-2 text-sm underline">
@@ -227,9 +226,7 @@ export default async function AdminProductsPage({
                     <option value="PUBLISHED">Published</option>
                     <option value="ARCHIVED">Archived</option>
                   </select>
-                  <button type="submit" className="text-sm underline">
-                    Set
-                  </button>
+                  <SubmitButton variant="bare">Set</SubmitButton>
                 </form>
 
                 <form action={deleteProduct}>

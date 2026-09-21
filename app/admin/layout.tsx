@@ -23,6 +23,7 @@ import MobileNav from "@/app/_components/mobile-nav";
 import { requireAdmin } from "@/lib/auth";
 import PasswordInput from "@/app/_components/password-input";
 import { signInAdmin, signOutAdmin } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -64,12 +65,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
               />
             </span>
           </label>
-          <button
-            type="submit"
-            className="mt-5 w-full rounded-lg bg-brand py-3.5 text-sm text-white"
-          >
-            Enter
-          </button>
+          <SubmitButton variant="primary" className="mt-5 w-full">Enter</SubmitButton>
         </form>
 
         <p className="mt-6 rounded border border-dashed border-line px-3 py-2 text-xs text-muted">
@@ -87,6 +83,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <div className="flex items-center justify-between p-5">
           <Logo size={36} href="/admin" label="Kidoclassic admin" />
           <MobileNav
+            hideAt="lg"
             label="Admin"
             links={[
               ...NAV.map((item) => ({ href: item.href, label: item.label })),
@@ -96,18 +93,13 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             {/* Sign out belongs in the menu too — on a phone the sidebar that
                 normally carries it is hidden. */}
             <form action={signOutAdmin}>
-              <button
-                type="submit"
-                className="flex items-center gap-3 text-sm text-muted hover:text-foreground"
-              >
-                <LogOut aria-hidden className="size-4" />
-                Sign out
-              </button>
+              <SubmitButton variant="bare"><LogOut aria-hidden className="size-4" />
+                Sign out</SubmitButton>
             </form>
           </MobileNav>
         </div>
 
-        <nav className="hidden md:block">
+        <nav className="hidden lg:block">
           <ul>
             {NAV.map((item) => (
               <li key={item.href}>
@@ -123,7 +115,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </ul>
         </nav>
 
-        <div className="mt-6 hidden border-t border-line p-5 md:block">
+        <div className="mt-6 hidden border-t border-line p-5 lg:block">
           <Link
             href="/"
             className="flex items-center gap-3 text-sm text-muted hover:text-foreground"
@@ -133,13 +125,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
 
           <form action={signOutAdmin} className="mt-4">
-            <button
-              type="submit"
-              className="flex items-center gap-3 text-sm text-muted hover:text-foreground"
-            >
-              <LogOut aria-hidden className="size-4" />
-              Sign out
-            </button>
+            <SubmitButton variant="bare"><LogOut aria-hidden className="size-4" />
+              Sign out</SubmitButton>
           </form>
         </div>
       </aside>

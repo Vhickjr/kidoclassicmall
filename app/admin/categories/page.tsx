@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { createCategory, deleteCategory, updateCategory } from "@/app/_actions/admin";
 import ImageUploader from "@/app/_components/image-uploader";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Categories" };
 
@@ -38,12 +39,7 @@ export default async function AdminCategoriesPage() {
             <ImageUploader name="imageUrl" multiple={false} />
           </div>
         </div>
-        <button
-          type="submit"
-          className="self-end bg-brand px-6 py-2.5 text-sm text-white"
-        >
-          Add
-        </button>
+        <SubmitButton variant="primary" className="self-end">Add</SubmitButton>
       </form>
 
       {categories.length === 0 ? (
@@ -89,23 +85,13 @@ export default async function AdminCategoriesPage() {
                   {category._count.products === 1 ? "product" : "products"}
                 </span>
 
-                <button
-                  type="submit"
-                  className="self-center bg-brand px-5 py-2.5 text-sm text-white"
-                >
-                  Save
-                </button>
+                <SubmitButton variant="primary" className="self-center">Save</SubmitButton>
               </form>
 
               <form action={deleteCategory} className="mt-2">
                 <input type="hidden" name="categoryId" value={category.id} />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                  Delete
-                </button>
+                <SubmitButton variant="danger"><Trash2 aria-hidden className="size-3.5" />
+                  Delete</SubmitButton>
               </form>
             </li>
           ))}

@@ -5,6 +5,7 @@ import { abandonedCheckouts } from "@/lib/abandoned";
 import { storeSettings } from "@/lib/settings-store";
 import { koboToNaira } from "@/lib/format";
 import { sendAbandonedFollowUpAction } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Abandoned checkouts" };
 
@@ -90,11 +91,7 @@ export default async function AdminAbandonedPage() {
                 <form action={sendAbandonedFollowUpAction}>
                   <input type="hidden" name="kind" value={entry.kind} />
                   <input type="hidden" name="id" value={entry.id} />
-                  <button
-                    type="submit"
-                    className="flex items-center gap-2 border border-brand px-4 py-2.5 text-sm text-brand-deep hover:bg-brand-soft/40"
-                  >
-                    {entry.followUpSentAt ? (
+                  <SubmitButton variant="primary">{entry.followUpSentAt ? (
                       <>
                         <MailCheck aria-hidden className="size-4" />
                         Send again
@@ -104,8 +101,7 @@ export default async function AdminAbandonedPage() {
                         <Send aria-hidden className="size-4" />
                         Send follow-up
                       </>
-                    )}
-                  </button>
+                    )}</SubmitButton>
                   {entry.followUpSentAt && (
                     <p className="mt-1 text-xs text-muted">
                       Sent {ago(entry.followUpSentAt)} ago

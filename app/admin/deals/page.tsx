@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { deleteDeal, saveDeal } from "@/app/_actions/admin";
 import ImageUploader from "@/app/_components/image-uploader";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Deals of the Month" };
 
@@ -116,9 +117,7 @@ export default async function AdminDealsPage({
               Cancel
             </a>
           )}
-          <button type="submit" className="bg-brand px-8 py-3 text-sm text-white">
-            {editing ? "Save changes" : "Create deal"}
-          </button>
+          <SubmitButton variant="primary">{editing ? "Save changes" : "Create deal"}</SubmitButton>
         </div>
       </form>
 
@@ -148,13 +147,8 @@ export default async function AdminDealsPage({
 
               <form action={deleteDeal}>
                 <input type="hidden" name="dealId" value={deal.id} />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                  Delete
-                </button>
+                <SubmitButton variant="danger"><Trash2 aria-hidden className="size-3.5" />
+                  Delete</SubmitButton>
               </form>
             </li>
           ))}

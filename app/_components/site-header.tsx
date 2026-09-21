@@ -39,12 +39,18 @@ export default async function SiteHeader() {
       <div className="relative mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-4 py-5">
         <Logo size={40} />
 
-        {/* `self-stretch` fills the outer row's own padded height (the row this
+        {/* Shows from `xl` (1280px), not `lg`. Measured: this row needs about
+            1144px for the logo, five links, search, currency switcher, icons
+            and the login button. At an iPad Mini's 1024px landscape width that
+            is 120px short, so the nav was being crammed instead of folding
+            away. Every tablet now gets the hamburger; laptops keep the bar.
+
+            `self-stretch` fills the outer row's own padded height (the row this
             dropdown positions against), not just this nav's tight content
             height — the Shop wrapper below stretches again against *this*
             box, so the chain reaches all the way down to where the dropdown
             actually starts, with no gap for hover to drop out over. */}
-        <nav className="hidden items-center gap-8 self-stretch text-sm lg:flex">
+        <nav className="hidden items-center gap-8 self-stretch text-sm xl:flex">
           <Link href="/" className="hover:text-muted">
             Home
           </Link>
@@ -118,7 +124,7 @@ export default async function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <form action="/search" className="hidden lg:block">
+          <form action="/search" className="hidden xl:block">
             <label className="flex items-center gap-2 border border-line px-3 py-1.5">
               <Search aria-hidden className="size-4 text-muted" />
               <input
@@ -169,7 +175,7 @@ export default async function SiteHeader() {
             </form>
           </MobileNav>
 
-          <Link href="/account/wishlist" aria-label="Wishlist" className="hidden lg:block">
+          <Link href="/account/wishlist" aria-label="Wishlist" className="hidden xl:block">
             <Heart aria-hidden className="size-5 text-muted hover:text-foreground" />
           </Link>
 

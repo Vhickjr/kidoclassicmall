@@ -12,6 +12,7 @@ import {
   updateProductDetails,
   updateVariant,
 } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Edit product" };
 
@@ -125,12 +126,7 @@ export default async function EditProductPage({
           />
         </label>
 
-        <button
-          type="submit"
-          className="mt-6 bg-brand px-8 py-3 text-sm text-white"
-        >
-          Save details
-        </button>
+        <SubmitButton variant="primary" className="mt-6">Save details</SubmitButton>
       </form>
 
       <h2 className="mt-12 font-semibold">Sizes, colours, price and stock</h2>
@@ -216,23 +212,13 @@ export default async function EditProductPage({
                   />
                 </label>
 
-                <button
-                  type="submit"
-                  className="bg-brand px-5 py-2.5 text-sm text-white"
-                >
-                  Save
-                </button>
+                <SubmitButton variant="primary">Save</SubmitButton>
               </form>
 
               <form action={deleteVariant} className="mt-2">
                 <input type="hidden" name="variantId" value={variant.id} />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                  Remove this size/colour
-                </button>
+                <SubmitButton variant="danger"><Trash2 aria-hidden className="size-3.5" />
+                  Remove this size/colour</SubmitButton>
               </form>
             </li>
           ))}
@@ -304,12 +290,7 @@ export default async function EditProductPage({
           />
         </label>
 
-        <button
-          type="submit"
-          className="bg-brand px-5 py-2.5 text-sm text-white"
-        >
-          Add
-        </button>
+        <SubmitButton variant="primary">Add</SubmitButton>
       </form>
     </div>
   );

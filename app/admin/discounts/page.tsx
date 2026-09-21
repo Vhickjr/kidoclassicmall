@@ -8,6 +8,7 @@ import {
   deleteDiscount,
   toggleDiscount,
 } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Discounts" };
 
@@ -59,12 +60,7 @@ export default async function AdminDiscountsPage() {
             className="mt-1.5 w-full border border-line px-4 py-2.5 text-sm outline-none focus:border-brand"
           />
         </label>
-        <button
-          type="submit"
-          className="self-end bg-brand px-6 py-2.5 text-sm text-white"
-        >
-          Create
-        </button>
+        <SubmitButton variant="primary" className="self-end">Create</SubmitButton>
       </form>
 
       {codes.length === 0 ? (
@@ -97,20 +93,13 @@ export default async function AdminDiscountsPage() {
 
               <form action={toggleDiscount}>
                 <input type="hidden" name="discountId" value={code.id} />
-                <button type="submit" className="text-sm underline">
-                  {code.active ? "Pause" : "Activate"}
-                </button>
+                <SubmitButton variant="bare">{code.active ? "Pause" : "Activate"}</SubmitButton>
               </form>
 
               <form action={deleteDiscount}>
                 <input type="hidden" name="discountId" value={code.id} />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                  Delete
-                </button>
+                <SubmitButton variant="danger"><Trash2 aria-hidden className="size-3.5" />
+                  Delete</SubmitButton>
               </form>
             </li>
           ))}

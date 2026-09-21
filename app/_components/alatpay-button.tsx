@@ -4,11 +4,37 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 
+/** What ALAT Pay hands back to onTransaction.
+ *
+ *  Their widget calls `onTransaction(n.data)` and finds the reference with its
+ *  own helper, which reads `id` — falling back to `data.id`. It never looks at
+ *  a field called `transactionId`; that string does not appear anywhere in
+ *  their script. Reading the wrong key is why every payment came back with
+ *  "no transaction reference". */
 type AlatpayResponse = {
+  id?: string | number;
+  data?: { id?: string | number; transactionId?: string };
   transactionId?: string;
-  data?: { transactionId?: string };
   status?: string;
 };
+
+/** Mirrors the widget's own extractor, with the older key names kept as a
+ *  fallback in case a different build of the script is served. */
+function referenceFrom(response: AlatpayResponse | undefined): string | null {
+  const candidates = [
+    response?.id,
+    response?.data?.id,
+    response?.transactionId,
+    response?.data?.transactionId,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
+  }
+
+  return null;
+}
 
 type AlatpayPopup = { show: () => void };
 
@@ -87,10 +113,17 @@ export default function AlatpayButton({
       amount: amountNaira,
       metaData: { orderId },
       onTransaction: (response: AlatpayResponse) => {
-        const transactionId =
-          response?.data?.transactionId ?? response?.transactionId;
-        if (transactionId) void settle(transactionId);
-        else setError("No transaction reference came back from ALAT Pay.");
+        const transactionId = referenceFrom(response);
+
+        if (transactionId) {
+          void settle(transactionId);
+          return;
+        }
+
+        // Logged in full: if the shape ever changes again, this is what tells
+        // us which field to read instead of guessing.
+        console.error("ALAT Pay sent no usable reference", response);
+        setError("No transaction reference came back from ALAT Pay.");
       },
       onClose: () => setBusy(false),
     });

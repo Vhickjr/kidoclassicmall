@@ -3,6 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUser, requireSuperAdmin } from "@/lib/auth";
 import PasswordInput from "@/app/_components/password-input";
 import { createStaff, setUserActive, setUserRole } from "@/app/_actions/staff";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Staff & roles" };
 
@@ -90,12 +91,7 @@ export default async function AdminStaffPage() {
             <option value="SUPER_ADMIN">Super admin</option>
           </select>
         </label>
-        <button
-          type="submit"
-          className="self-end bg-brand px-6 py-2.5 text-sm text-white"
-        >
-          Create
-        </button>
+        <SubmitButton variant="primary" className="self-end">Create</SubmitButton>
       </form>
 
       <h2 className="mt-12 font-semibold">Staff ({staff.length})</h2>
@@ -155,9 +151,7 @@ function UserTable({ users, meId }: { users: Row[]; meId: string | undefined }) 
                 <option value="ADMIN">Admin</option>
                 <option value="SUPER_ADMIN">Super admin</option>
               </select>
-              <button type="submit" className="text-sm underline">
-                Set
-              </button>
+              <SubmitButton variant="bare">Set</SubmitButton>
             </form>
 
             <form action={setUserActive}>
@@ -167,13 +161,8 @@ function UserTable({ users, meId }: { users: Row[]; meId: string | undefined }) 
                 name="active"
                 value={user.isActive ? "false" : "true"}
               />
-              <button
-                type="submit"
-                disabled={isMe}
-                className="text-sm underline disabled:opacity-30"
-              >
-                {user.isActive ? "Disable" : "Enable"}
-              </button>
+              <SubmitButton variant="bare"
+                disabled={isMe}>{user.isActive ? "Disable" : "Enable"}</SubmitButton>
             </form>
           </li>
         );

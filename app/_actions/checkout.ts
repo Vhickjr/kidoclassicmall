@@ -10,6 +10,7 @@ import { koboToNaira } from "@/lib/format";
 import { storeSettings } from "@/lib/settings-store";
 import { after } from "next/server";
 import { sendOrderReceipt } from "@/lib/mail";
+import { settleFreeOrder } from "@/lib/receipts";
 import {
   CHECKOUT_COOKIE,
   type CheckoutState,
@@ -154,6 +155,10 @@ export async function placeOrder(formData: FormData) {
   const address = state.addressId ? await ownedAddress(state.addressId) : null;
   if (!address) redirect("/checkout/address");
 
+  // Decides both what is emailed and whether the basket empties now, so it is
+  // settled here rather than halfway down.
+  const cashOnDelivery = state.paymentMethod === "cash-on-delivery";
+
   const subtotalKobo = cartSubtotalKobo(cart);
   const discount = await discountFor(state.discountCode, subtotalKobo);
   // Same delivery figures the checkout screens quoted, so what is written to the
@@ -233,9 +238,18 @@ export async function placeOrder(formData: FormData) {
   // Sent after the response, so a slow or unreachable mail server cannot hold
   // up a customer who has already ordered. `after` still runs even though this
   // action ends in a redirect. A mail failure must never lose the order.
-  // Only for a genuinely new order: resuming an abandoned attempt should not
-  // send her a second "we got your order" email for the same basket.
-  if (!reusable) {
+  // Cash on delivery only. Placing a card order is not paying for one, so
+  // nothing is emailed at this point: the customer is about to be sent to ALAT
+  // Pay and may never complete, and a receipt for money that never arrived is
+  // worse than no email at all. The card customer hears from us once payment
+  // is confirmed, from sendPaidReceiptOnce.
+  //
+  // Cash on delivery has no online payment step to wait for, so that order is
+  // genuinely committed here and the confirmation is correct.
+  //
+  // `!reusable` as well: resuming an abandoned attempt must not re-send a
+  // confirmation for the same basket.
+  if (cashOnDelivery && !reusable) {
     after(async () => {
       try {
         await sendOrderReceipt(order, "placed");
@@ -261,8 +275,6 @@ export async function placeOrder(formData: FormData) {
   //
   // Cash on delivery is the one exception: there is no online payment step to
   // come back from, so that order is committed here and the basket is done.
-  const cashOnDelivery = state.paymentMethod === "cash-on-delivery";
-
   await prisma.cart.update({
     where: { id: cart.id },
     data: {
@@ -281,6 +293,15 @@ export async function placeOrder(formData: FormData) {
   // Cash on delivery is settled in person, so it skips the payment window and
   // the order simply waits for staff to mark it paid.
   if (cashOnDelivery) {
+    redirect(`/checkout/confirmed?order=${order.id}`);
+  }
+
+  // Nothing left to charge — a discount covered the goods and the delivery.
+  // ALAT Pay cannot take a payment of zero, so sending her to the payment
+  // window would strand the order on a screen that can never succeed. Settle
+  // it here instead, through the same path a real payment uses.
+  if (totals.totalKobo === 0) {
+    await settleFreeOrder(order.id);
     redirect(`/checkout/confirmed?order=${order.id}`);
   }
 

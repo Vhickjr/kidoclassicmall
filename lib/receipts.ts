@@ -1,6 +1,7 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { sendOrderReceipt } from "@/lib/mail";
+import { removePurchasedFromBasket } from "@/lib/basket-settle";
 
 /**
  * Sends the "payment received" receipt exactly once per order.
@@ -38,4 +39,50 @@ export async function sendPaidReceiptOnce(orderId: string): Promise<void> {
     // A receipt is a courtesy. Never fail a paid order over it.
     console.error("paid receipt failed to send", orderId, error);
   }
+}
+
+/**
+ * Completes an order that costs nothing.
+ *
+ * A discount can cover both the goods and the delivery, and no payment
+ * provider will take a charge of zero. Such an order still has to decrement
+ * stock, stamp itself paid and send a receipt, exactly as a paid one does —
+ * so it goes through the same steps rather than sitting PENDING for ever.
+ */
+export async function settleFreeOrder(orderId: string): Promise<void> {
+  const prisma = getPrisma();
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
+
+      if (!order || order.status !== "PENDING" || order.totalKobo !== 0) return;
+
+      for (const item of order.items) {
+        const taken = await tx.productVariant.updateMany({
+          where: { id: item.variantId, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
+
+        if (taken.count === 0) {
+          throw new Error(`Out of stock for free order ${orderId}`);
+        }
+      }
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: "PAID", paidAt: new Date() },
+      });
+
+      await removePurchasedFromBasket(tx, order);
+    });
+  } catch (error) {
+    console.error("could not settle a zero-total order", orderId, error);
+    return;
+  }
+
+  await sendPaidReceiptOnce(orderId);
 }

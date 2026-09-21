@@ -9,6 +9,7 @@ import {
   toggleCurrencyAutoRate,
   upsertCurrency,
 } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Currencies" };
 
@@ -30,13 +31,8 @@ export default async function AdminCurrenciesPage() {
       </p>
 
       <form action={refreshExchangeRates} className="mt-6">
-        <button
-          type="submit"
-          className="flex items-center gap-2 border border-brand px-5 py-2.5 text-sm text-brand-deep hover:bg-brand-soft/40"
-        >
-          <RefreshCw aria-hidden className="size-4" />
-          Update rates from the live feed
-        </button>
+        <SubmitButton variant="primary"><RefreshCw aria-hidden className="size-4" />
+          Update rates from the live feed</SubmitButton>
       </form>
       <p className="mt-2 text-xs text-muted">
         Rates continuously and automatically update in the background every hour from the live exchange feed.
@@ -90,12 +86,7 @@ export default async function AdminCurrenciesPage() {
           />
           Follow live rate
         </label>
-        <button
-          type="submit"
-          className="self-end bg-brand px-6 py-2.5 text-sm text-white"
-        >
-          Save
-        </button>
+        <SubmitButton variant="primary" className="self-end">Save</SubmitButton>
       </form>
 
       <p className="mt-2 text-xs text-muted">
@@ -133,9 +124,7 @@ export default async function AdminCurrenciesPage() {
 
               <form action={toggleCurrencyAutoRate}>
                 <input type="hidden" name="currencyId" value={currency.id} />
-                <button type="submit" className="text-sm underline">
-                  {currency.autoRate ? "Pin rate" : "Follow live"}
-                </button>
+                <SubmitButton variant="bare">{currency.autoRate ? "Pin rate" : "Follow live"}</SubmitButton>
               </form>
               <span
                 className={`px-2 py-1 text-xs ${
@@ -149,20 +138,13 @@ export default async function AdminCurrenciesPage() {
 
               <form action={toggleCurrency}>
                 <input type="hidden" name="currencyId" value={currency.id} />
-                <button type="submit" className="text-sm underline">
-                  {currency.active ? "Hide" : "Show"}
-                </button>
+                <SubmitButton variant="bare">{currency.active ? "Hide" : "Show"}</SubmitButton>
               </form>
 
               <form action={deleteCurrency}>
                 <input type="hidden" name="currencyId" value={currency.id} />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                  Delete
-                </button>
+                <SubmitButton variant="danger"><Trash2 aria-hidden className="size-3.5" />
+                  Delete</SubmitButton>
               </form>
             </li>
           ))}

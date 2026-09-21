@@ -3,6 +3,7 @@ import { Download, Trash2 } from "lucide-react";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { broadcastToSubscribers, removeSubscriber } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Subscribers" };
 
@@ -74,14 +75,9 @@ export default async function AdminSubscribersPage() {
             />
           </label>
 
-          <button
-            type="submit"
-            disabled={subscribers.length === 0}
-            className="mt-5 bg-brand px-8 py-3 text-sm text-white disabled:opacity-40"
-          >
-            Send to {subscribers.length}{" "}
-            {subscribers.length === 1 ? "subscriber" : "subscribers"}
-          </button>
+          <SubmitButton variant="primary"
+            disabled={subscribers.length === 0} className="mt-5">Send to {subscribers.length}{" "}
+            {subscribers.length === 1 ? "subscriber" : "subscribers"}</SubmitButton>
         </form>
 
         <p className="mt-3 text-xs text-muted">
@@ -116,13 +112,8 @@ export default async function AdminSubscribersPage() {
                   name="subscriberId"
                   value={subscriber.id}
                 />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700"
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                  Unsubscribe
-                </button>
+                <SubmitButton variant="danger"><Trash2 aria-hidden className="size-3.5" />
+                  Unsubscribe</SubmitButton>
               </form>
             </li>
           ))}

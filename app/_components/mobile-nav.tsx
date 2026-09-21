@@ -19,15 +19,29 @@ export type MobileLink = {
  * it closes on route change and on Escape, and it locks the page behind it so
  * the body does not scroll under an open menu.
  */
+/** Written out in full because Tailwind only keeps classes it can see as
+ *  literal strings; a template like `${bp}:hidden` would be purged away. */
+const HIDE_AT = {
+  lg: { trigger: "lg:hidden", overlay: "fixed inset-0 z-50 lg:hidden" },
+  xl: { trigger: "xl:hidden", overlay: "fixed inset-0 z-50 xl:hidden" },
+} as const;
+
 export default function MobileNav({
   links,
   label = "Menu",
   children,
+  /** The width at which the surrounding layout shows its own navigation, so
+   *  this drawer must disappear. The storefront header needs 1280px; the admin
+   *  sidebar appears at 1024px. Getting these out of step showed the sidebar
+   *  and the drawer at the same time. */
+  hideAt = "xl",
 }: {
   links: MobileLink[];
   label?: string;
   children?: React.ReactNode;
+  hideAt?: keyof typeof HIDE_AT;
 }) {
+  const hide = HIDE_AT[hideAt];
   const [open, setOpen] = useState(false);
   // Which sub-list is showing, if any. Reset whenever the drawer closes so it
   // always reopens at the top level.
@@ -67,13 +81,13 @@ export default function MobileNav({
         onClick={() => setOpen(true)}
         aria-label={`Open ${label.toLowerCase()}`}
         aria-expanded={open}
-        className="lg:hidden"
+        className={hide.trigger}
       >
         <Menu aria-hidden className="size-6" />
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className={hide.overlay}>
           <button
             type="button"
             aria-label="Close menu"

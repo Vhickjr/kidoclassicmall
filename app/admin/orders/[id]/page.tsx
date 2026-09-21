@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { koboToNaira } from "@/lib/format";
 import { setOrderStatus } from "@/app/_actions/admin";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -120,12 +121,7 @@ export default async function AdminOrderPage({
               <option value="CANCELLED">Cancelled</option>
               <option value="REFUNDED">Refunded</option>
             </select>
-            <button
-              type="submit"
-              className="mt-3 w-full bg-brand py-2.5 text-sm text-white"
-            >
-              Update status
-            </button>
+            <SubmitButton variant="primary" className="mt-3 w-full">Update status</SubmitButton>
           </form>
 
           <p className="mt-5 text-xs text-muted">

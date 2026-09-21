@@ -136,12 +136,19 @@ export async function confirmAndFulfilOrder(
     return { ok: false, error: `Payment is ${confirmation.status || "unconfirmed"}.` };
   }
 
+  // Short payments are refused; overpayments are not.
+  //
+  // ALAT Pay adds its transfer fee on top of the amount billed, so a ₦200
+  // order is genuinely settled by a ₦201 transfer. Insisting the two match
+  // exactly rejected real, successful payments and left the order stranded as
+  // PENDING with the customer's money already gone. Only a shortfall is a
+  // problem, because accepting less than the order is worth loses money.
   if (
     confirmation.amountKobo !== null &&
-    confirmation.amountKobo !== order.totalKobo
+    confirmation.amountKobo < order.totalKobo
   ) {
     console.error(
-      "alatpay amount mismatch",
+      "alatpay short payment",
       orderId,
       "billed",
       order.totalKobo,
@@ -149,6 +156,22 @@ export async function confirmAndFulfilOrder(
       confirmation.amountKobo
     );
     return { ok: false, error: "The amount paid does not match this order." };
+  }
+
+  if (
+    confirmation.amountKobo !== null &&
+    confirmation.amountKobo > order.totalKobo
+  ) {
+    // Worth a line in the log: normally this is just the gateway's fee, but a
+    // large gap is something staff should look at.
+    console.warn(
+      "alatpay overpayment accepted",
+      orderId,
+      "billed",
+      order.totalKobo,
+      "confirmed",
+      confirmation.amountKobo
+    );
   }
 
   try {

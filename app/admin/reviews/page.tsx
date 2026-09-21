@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { moderateReview } from "@/app/_actions/reviews";
 import StarRating from "@/app/_components/star-rating";
+import SubmitButton from "@/app/_components/submit-button";
 
 export const metadata: Metadata = { title: "Reviews" };
 
@@ -103,12 +104,7 @@ export default async function AdminReviewsPage({
                     <form action={moderateReview}>
                       <input type="hidden" name="reviewId" value={review.id} />
                       <input type="hidden" name="decision" value="APPROVED" />
-                      <button
-                        type="submit"
-                        className="bg-brand px-5 py-2 text-sm text-white"
-                      >
-                        Approve
-                      </button>
+                      <SubmitButton variant="primary">Approve</SubmitButton>
                     </form>
                   )}
 
@@ -116,12 +112,7 @@ export default async function AdminReviewsPage({
                     <form action={moderateReview}>
                       <input type="hidden" name="reviewId" value={review.id} />
                       <input type="hidden" name="decision" value="REJECTED" />
-                      <button
-                        type="submit"
-                        className="bg-red-50 px-5 py-2 text-sm text-red-600 hover:bg-red-100"
-                      >
-                        Reject
-                      </button>
+                      <SubmitButton variant="danger">Reject</SubmitButton>
                     </form>
                   )}
                 </div>
